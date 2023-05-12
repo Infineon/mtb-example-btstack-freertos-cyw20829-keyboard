@@ -12,7 +12,7 @@
  * Related Document: See README.md
  *
  *******************************************************************************
- * Copyright 2022, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2022-2023, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -58,7 +58,6 @@
 #include <queue.h>
 #include "timers.h"
 
-#include "cyhal_wdt.h"
 
 #include "wiced_memory.h"
 #include "wiced_bt_stack.h"
@@ -117,7 +116,7 @@ cyhal_wdt_t wdt_obj;
  *******************************************************************************/
 #if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
 /* Function to initialize Watchdog */
-static void app_init_wdt(void);
+void app_init_wdt(void);
 #endif
 /* Function to initialize the various tasks for the Bluetooth LE application */
 static void app_tasks_init(void);
@@ -137,7 +136,7 @@ static void app_tasks_init(void);
  *
  *  @return    void
  */
-static void app_init_wdt(void)
+void app_init_wdt(void)
 {
     cy_rslt_t result = CY_RSLT_SUCCESS;
 
@@ -296,10 +295,7 @@ int main(void)
         CY_ASSERT(0);
     }
 
-    /* Initialize WDT */
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-    app_init_wdt();
-#endif
+
     /* Enable global interrupts */
     __enable_irq();
     

@@ -5,7 +5,7 @@
  *              necessary for handling device sleep
  *
  *******************************************************************************
- * Copyright 2022, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2022-2023, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -118,7 +118,7 @@ cy_stc_syspm_callback_t syspm_deep_sleep_cb_handler =
     &syspm_deep_sleep_params,
     NULL,
     NULL,
-    255
+    253
 };
 
 cy_stc_syspm_callback_t syspm_hibernate_handler =
@@ -252,28 +252,12 @@ cy_en_syspm_status_t syspm_ds_cb(cy_stc_syspm_callback_params_t *callbackParams,
             {
                 Cy_SysClk_MfoEnable(true);
             }
-#ifdef FLASH_POWER_DOWN
-            /* Power down external flash */
-            app_flash_memory_power_down();
-#endif
-
-            /* Disable SMIF */
-            app_flash_smif_disable();
-
             retVal = CY_SYSPM_SUCCESS;
         }
         break;
 
         case CY_SYSPM_AFTER_DS_WFI_TRANSITION:
         {
-            /* Enable SMIF */
-            app_flash_smif_enable();
-
-#ifdef FLASH_POWER_DOWN
-            /* Power up external flash */
-            app_flash_memory_power_up();
-#endif
-
             retVal = CY_SYSPM_SUCCESS;
         }
         break;

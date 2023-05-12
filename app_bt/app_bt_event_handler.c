@@ -12,7 +12,7 @@
  * Related Document: See README.md
  *
  *******************************************************************************
- * Copyright 2022, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2022-2023, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -56,6 +56,7 @@
 #include "wiced_bt_gatt.h"
 #include "wiced_bt_ble.h"
 
+#include "cyhal_wdt.h"
 /*******************************************************************************
  *                                Macros
  *******************************************************************************/
@@ -82,6 +83,11 @@ static void app_bt_init(void);
 
 /* This function initializes GATT DB and registers callback for GATT events */
 static void app_bt_gatt_db_init(void);
+
+#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
+/* Function to initialize Watchdog */
+extern void app_init_wdt(void);
+#endif
 
 /*******************************************************************************
  *                          Function Definitions
@@ -121,7 +127,10 @@ app_bt_event_management_callback(wiced_bt_management_evt_t event,
         case BTM_ENABLED_EVT:
             /* Perform application-specific initialization */
             app_bt_init();
-
+            /* Initialize WDT */
+        #if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
+            app_init_wdt();
+        #endif
             /* Registering callback for system power management */
             create_cpu_sleep_cb();
             create_deep_sleep_cb();

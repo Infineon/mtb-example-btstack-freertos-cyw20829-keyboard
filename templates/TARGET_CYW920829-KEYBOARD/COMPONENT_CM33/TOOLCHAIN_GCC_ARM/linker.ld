@@ -48,16 +48,16 @@ STACK_SIZE = 0x1000;
 FLASH_START_ADDR_SAHB       = 0x60000000;
 FLASH_START_ADDR_CBUS       = 0x08000000;
 RAM_START_ADDR_SAHB         = 0x20000000;
-RAM_END_ADDR_SAHB           = 0x20020000; /* 128K */
+RAM_END_ADDR_SAHB           = 0x20040000; /* 256K */
 
 RAM_START_ADDR_CBUS         = 0x20000000;
-RAM_END_ADDR_CBUS           = 0x20020000; /* 128K */
+RAM_END_ADDR_CBUS           = 0x20040000; /* 256K */
 
 FLASH_END_ADDR_SAHB         = 0x60080000; /* 512K */
 
 BOOTSTRAP_OFFSET_FLASH      = 0x00000050; /* toc2=0x10, l1_desc=0x1C, sign_header=0x20 */
-BOOTSTRAP_OFFSET_RAM        = 0x0001E000; /* Modify this value to change the size of Bootstrap code + Data */
-APPCODE_OFFSET_FLASH        = 0x00002200;
+BOOTSTRAP_OFFSET_RAM        = 0x0003DC00; /* Modify this value to change the size of Bootstrap code + Data */
+APPCODE_OFFSET_FLASH        = 0x00002600;
 
 RAMVECTORS_ALIGNMENT        = 512;
 

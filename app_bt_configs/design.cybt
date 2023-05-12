@@ -509,7 +509,7 @@
                                     </Properties>
                                     <Permission>
                                         <Property id="Read" value="true"/>
-                                        <Property id="ReadAuthenticated" value="false"/>
+                                        <Property id="ReadAuthenticated" value="true"/>
                                         <Property id="VariableLength" value="false"/>
                                         <Property id="Write" value="false"/>
                                         <Property id="WriteNoResponse" value="false"/>
