@@ -75,6 +75,19 @@
 #include "app_keyscan.h"
 
 #include "cy_retarget_io.h"
+#include "cyhal_wdt.h"
+
+#ifdef ENABLE_OTA
+/* OTA header files */
+#include "serial_flash.h"
+#include "cy_log.h"
+#include "cy_ota_api.h"
+#include "ota_context.h"
+#include "cy_ota_platform.h"
+
+
+extern cy_ota_agent_mem_interface_t storage_interfaces;
+#endif
 
 /*******************************************************************************
  *                               Macro Definitions
@@ -174,11 +187,24 @@ static void app_tasks_init(void)
         CY_ASSERT(0);
     }
 #endif
+#ifdef ENABLE_OTA
+    cy_log_init(CY_LOG_WARNING, NULL, NULL);
+    cy_ota_set_log_level(CY_LOG_INFO);
+    printf("call ota_mem_init()\n");
+        if (ota_mem_init() != CY_RSLT_SUCCESS)
+        {
+            printf("ERROR returned from ota_mem_init()!!!!!\n");
+        }
+#endif
+        cybt_platform_config_init(&app_bt_platform_cfg_settings);
+#ifdef ENABLE_OTA
 
-    /* Initializing the HCI UART for Host control */
-    cybt_platform_config_init(&app_bt_platform_cfg_settings);
+        ota_initialize_default_values();
 
-    /* Debug logs on UART port */
+
+        cy_ota_storage_validated(&storage_interfaces);
+#endif
+
     printf("\r\n****** Bluetooth LE HID Keyboard Application******\r\n ");
     printf("\r\nThis application implements HoGP and sends HID reports on Keyboard events over BLE \r\n");
     printf("\r\nDiscover this device with the name:%s\r\n", app_gap_device_name);
@@ -191,6 +217,20 @@ static void app_tasks_init(void)
 
     /* Initialize kv_store library */
     app_flash_kv_store_init();
+#ifdef ENABLE_OTA
+#ifdef COMPONENT_OTA_BLUETOOTH
+    /* Verify that the Non-Secure / Secure build choice matches the Bluetooth? Configurator output */
+    if (cy_ota_ble_check_build_vs_configurator() != CY_RSLT_SUCCESS)
+    {
+        printf("Failed configurator check\n");
+        while(true)
+        {
+            cy_rtos_delay_milliseconds(1000);
+        }
+
+    }
+#endif
+#endif
 
     /* Configure Bluetooth LE configuration & registers Bluetooth LE event callback function
      * with the BT stack
@@ -271,6 +311,7 @@ static void app_tasks_init(void)
 
 }
 
+
 /**
  *  Function name:
  *  main
@@ -287,6 +328,9 @@ static void app_tasks_init(void)
 int main(void)
 {
        cy_rslt_t result = CY_RSLT_SUCCESS;
+#ifdef ENABLE_OTA
+       cyhal_wdt_t  wdt_obj;
+#endif
 
     /* Initialize the device and board peripherals */
     result = cybsp_init();
@@ -294,6 +338,10 @@ int main(void)
     {
         CY_ASSERT(0);
     }
+#ifdef ENABLE_OTA
+    cyhal_wdt_init(&wdt_obj, cyhal_wdt_get_max_timeout_ms());
+    cyhal_wdt_free(&wdt_obj);
+#endif
 
 
     /* Enable global interrupts */
@@ -301,7 +349,8 @@ int main(void)
     
     /* Initialize the tasks */
     app_tasks_init();
-    printf("Application tasks initialized\r\n");
+    printf("Application tasks init\r\n");
+    printf("OTA Version %d %d %d \r\n",APP_VERSION_MAJOR,APP_VERSION_MINOR,APP_VERSION_BUILD);
 
     /* Start the FreeRTOS scheduler */
     vTaskStartScheduler();

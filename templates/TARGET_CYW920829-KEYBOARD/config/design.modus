@@ -127,34 +127,10 @@
                 <Block location="ioss[0].port[1].pin[2]">
                     <Alias value="CYBSP_SWDIO"/>
                     <Alias value="CYBSP_DEBUG_UART_RX"/>
-                    <Personality template="pin" version="3.0">
-                        <Param id="DriveModes" value="CY_GPIO_DM_STRONG_IN_OFF"/>
-                        <Param id="initialState" value="1"/>
-                        <Param id="nonSec" value="1"/>
-                        <Param id="vtrip" value="CY_GPIO_VTRIP_CMOS"/>
-                        <Param id="isrTrigger" value="CY_GPIO_INTR_DISABLE"/>
-                        <Param id="slewRate" value="CY_GPIO_SLEW_FAST"/>
-                        <Param id="driveStrength" value="CY_GPIO_DRIVE_1_2"/>
-                        <Param id="sioOutputBuffer" value="true"/>
-                        <Param id="pullUpRes" value="CY_GPIO_PULLUP_RES_DISABLE"/>
-                        <Param id="inFlash" value="true"/>
-                    </Personality>
                 </Block>
                 <Block location="ioss[0].port[1].pin[3]">
                     <Alias value="CYBSP_SWDCK"/>
                     <Alias value="CYBSP_DEBUG_UART_TX"/>
-                    <Personality template="pin" version="3.0">
-                        <Param id="DriveModes" value="CY_GPIO_DM_STRONG_IN_OFF"/>
-                        <Param id="initialState" value="1"/>
-                        <Param id="nonSec" value="1"/>
-                        <Param id="vtrip" value="CY_GPIO_VTRIP_CMOS"/>
-                        <Param id="isrTrigger" value="CY_GPIO_INTR_DISABLE"/>
-                        <Param id="slewRate" value="CY_GPIO_SLEW_FAST"/>
-                        <Param id="driveStrength" value="CY_GPIO_DRIVE_1_2"/>
-                        <Param id="sioOutputBuffer" value="true"/>
-                        <Param id="pullUpRes" value="CY_GPIO_PULLUP_RES_DISABLE"/>
-                        <Param id="inFlash" value="true"/>
-                    </Personality>
                 </Block>
                 <Block location="ioss[0].port[1].pin[4]">
                     <Personality template="pin" version="3.0">
@@ -638,14 +614,6 @@
                 <Net>
                     <Port name="ioss[0].port[1].pin[1].digital_in[0]"/>
                     <Port name="keyscan[0].ks_row[6]"/>
-                </Net>
-                <Net>
-                    <Port name="ioss[0].port[1].pin[2].digital_out[0]"/>
-                    <Port name="keyscan[0].ks_col[17]"/>
-                </Net>
-                <Net>
-                    <Port name="ioss[0].port[1].pin[3].digital_out[0]"/>
-                    <Port name="keyscan[0].ks_col[16]"/>
                 </Net>
                 <Net>
                     <Port name="ioss[0].port[1].pin[4].digital_out[0]"/>

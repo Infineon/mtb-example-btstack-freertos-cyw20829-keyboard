@@ -52,8 +52,6 @@
 /*******************************************************************************
  *                              Macro Definitions
  ******************************************************************************/
-#define FLASH_POWER_DOWN_CMD    (0xB9)
-#define FLASH_POWER_UP_CMD      (0xAB)
 
 /*******************************************************************************
  *                              GLOBAL DECLARATIONS
@@ -128,98 +126,6 @@ cy_rslt_t app_flash_bd_get_flash_id(void *context, uint32_t addr, uint32_t lengt
     }
 
     return result;
-}
-CY_SECTION_RAMFUNC_END
-
-CY_SECTION_RAMFUNC_BEGIN
-/**
- * Function Name:
- * app_flash_memory_power_down
- *
- * Function Description:
- * @brief  This function puts the Flash to Power down state.
- *
- * @param  void
- *
- * @return void
- */
-void app_flash_memory_power_down(void)
-{
-    Cy_SMIF_TransmitCommand(SMIF0, FLASH_POWER_DOWN_CMD, CY_SMIF_WIDTH_SINGLE, NULL, CY_SMIF_CMD_WITHOUT_PARAM,
-                                    CY_SMIF_WIDTH_NA, CY_SMIF_SLAVE_SELECT_0, CY_SMIF_TX_LAST_BYTE,
-                                    &cybsp_smif_context);
-    while(Cy_SMIF_BusyCheck(SMIF0));
-}
-CY_SECTION_RAMFUNC_END
-
-CY_SECTION_RAMFUNC_BEGIN
-/**
- * Function Name:
- * app_flash_memory_power_up
- *
- * Function Description:
- * @brief  This function recovers the flash from Power down state.
- *
- * @param  void
- *
- * @return void
- */
-void app_flash_memory_power_up(void)
-{
-    Cy_SMIF_TransmitCommand(SMIF0, FLASH_POWER_UP_CMD, CY_SMIF_WIDTH_SINGLE, NULL, CY_SMIF_CMD_WITHOUT_PARAM,
-                                     CY_SMIF_WIDTH_NA, CY_SMIF_SLAVE_SELECT_0, CY_SMIF_TX_LAST_BYTE,
-                                     &cybsp_smif_context);
-    while(Cy_SMIF_BusyCheck(SMIF0));
-
-    Cy_SysLib_DelayUs(5);
-}
-CY_SECTION_RAMFUNC_END
-
-CY_SECTION_RAMFUNC_BEGIN
-/**
- *  Function name:
- *  app_flash_smif_disable
- *
- *  Function Description:
- *  @brief Function used to disable SMIF
- *
- *  @param  void
- *
- *  @return void
- */
-void app_flash_smif_disable(void)
-{
-    SMIF0->CTL = SMIF0->CTL & ~SMIF_CTL_ENABLED_Msk;
-    g_PORT_SEL0 = HSIOM_PRT2->PORT_SEL0;
-    g_PORT_SEL1 = HSIOM_PRT2->PORT_SEL1;
-    g_CFG = GPIO_PRT2->CFG;
-    g_OUT = GPIO_PRT2->OUT;
-    HSIOM_PRT2->PORT_SEL0 = 0x00;
-    HSIOM_PRT2->PORT_SEL1 = 0x00;
-    GPIO_PRT2->CFG = 0x600006;
-    GPIO_PRT2->OUT = 0x1;
-}
-CY_SECTION_RAMFUNC_END
-
-CY_SECTION_RAMFUNC_BEGIN
-/**
- *  Function name:
- *  app_flash_smif_enable
- *
- *  Function Description:
- *  @brief Function used to enable SMIF
- *
- *  @param  void
- *
- *  @return void
- */
-void app_flash_smif_enable(void)
-{
-    SMIF0->CTL = SMIF0->CTL | SMIF_CTL_ENABLED_Msk;
-    HSIOM_PRT2->PORT_SEL0 = g_PORT_SEL0;
-    HSIOM_PRT2->PORT_SEL1 = g_PORT_SEL1;
-    GPIO_PRT2->CFG = g_CFG;
-    GPIO_PRT2->OUT = g_OUT;
 }
 CY_SECTION_RAMFUNC_END
 

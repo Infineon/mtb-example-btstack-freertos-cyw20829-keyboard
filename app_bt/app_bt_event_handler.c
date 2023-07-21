@@ -57,6 +57,9 @@
 #include "wiced_bt_ble.h"
 
 #include "cyhal_wdt.h"
+#ifdef ENABLE_OTA
+#include "ota_context.h"
+#endif
 /*******************************************************************************
  *                                Macros
  *******************************************************************************/
@@ -75,6 +78,9 @@ static uint16_t conn_supervision_timeout = 0;
 
 extern TimerHandle_t conn_param_update_timer;
 extern uint8_t conn_param_update_retry;
+#ifdef ENABLE_OTA
+extern gatt_write_req_buf_t write_buff;
+#endif
 /*******************************************************************************
  *                           Function Prototypes
  *******************************************************************************/
@@ -420,6 +426,9 @@ app_bt_event_management_callback(wiced_bt_management_evt_t event,
 static void app_bt_init(void)
 {
     wiced_bt_device_address_t local_bda = { 0 };
+#ifdef ENABLE_OTA
+    memset(&write_buff, 0x00, sizeof(gatt_write_req_buf_t));
+#endif
 
     /* GATT DB Initialization */
     app_bt_gatt_db_init();
@@ -446,11 +455,11 @@ static void app_bt_init(void)
         /* Save the bd address to flash */
         app_bt_bond_update_local_bd_addr(local_bda);
     }
+    /* Set the local bd address */
+    wiced_bt_set_local_bdaddr(local_bda, BLE_ADDR_RANDOM);
 
     printf("\nBluetooth Device Address: ");
     app_bt_util_print_bd_address(local_bda);
-    /* Set the local bd address */
-    wiced_bt_set_local_bdaddr(local_bda, BLE_ADDR_RANDOM);
 
     /* Start Advertisement or re-connect */
     app_bt_adv_start();

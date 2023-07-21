@@ -51,6 +51,7 @@
 #include "app_serial_flash.h"
 #include "app_keyscan.h"
 #include "app_handler.h"
+#include "cybsp_smif_init.h"
 
 // This is included to allow the user to control the idle task behavior via the configurator
 // System->Power->RTOS->System Idle Power Mode setting.
@@ -175,7 +176,7 @@ syspm_cpu_sleep_cb( cy_stc_syspm_callback_params_t *callbackParams,
             cyhal_wdt_stop(&wdt_obj);
 #endif
             //Disable SMIF
-            app_flash_smif_disable();
+            cybsp_smif_disable();
 
             retVal = CY_SYSPM_SUCCESS;
         }
@@ -184,7 +185,7 @@ syspm_cpu_sleep_cb( cy_stc_syspm_callback_params_t *callbackParams,
         case CY_SYSPM_AFTER_TRANSITION:
         {
             //Enable SMIF
-            app_flash_smif_enable();
+            cybsp_smif_enable();
 #if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
             /* Start watchdog timer */
             cyhal_wdt_start(&wdt_obj);
@@ -325,12 +326,8 @@ syspm_hibernate_cb(cy_stc_syspm_callback_params_t *callbackParams,
             cyhal_wdt_kick(&wdt_obj);
             cyhal_wdt_stop(&wdt_obj);
 #endif
-#ifdef FLASH_POWER_DOWN
-            /* Power down external flash */
-            app_flash_memory_power_down();
-#endif
             // Disable SMIF
-            app_flash_smif_disable();
+            cybsp_smif_disable();
 
             retVal = CY_SYSPM_SUCCESS;
         }

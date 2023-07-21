@@ -180,6 +180,9 @@ The keyboard will come out of this deepsleep state on any button press events an
 
 6. When the battery capacity reaches 1 percent, the keyboard goes to hibernate mode. To come out of this hibernate state, remove the batteries and insert new batteries to power cycle the keyboard.
 
+### Steps to enable OTA 
+Refer [OTA_README](./app_bt_ota/OTA_README.md)
+
 ### Testing on Windows 10
 
 1. Use the slider switch at the bottom side to power ON the keyboard.
@@ -200,7 +203,7 @@ The keyboard will come out of this deepsleep state on any button press events an
 <img src="images/keyboard_passkey.jpg" width="100%">
 
 7. After connecting, displays the following notification on Windows. <br/>
-<img src="images/keyboard_connected.jpg" width="100%">
+<img src="images/keyboard_connected.jpg" width="50%">
 
 You can now use the keyboard to press keys and use all the functionalities.
 The keyboard can be used in three OS modes- Android, Windows, and iOS.
@@ -308,6 +311,7 @@ Document title: *CE236637* - *AIROC&trade; CYW20829 HID keyboard reference solut
  ------- | ---------------------
  1.0.0   | Beta Release of the keyboard application. This version is not for production
  2.0.0   | Added Support for CYW20829B0
+ 3.0.0   | OTA feature enabled.
 
 <br />
 

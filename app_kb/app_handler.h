@@ -56,6 +56,12 @@
 #include "app_config.h"
 #include "app_sleep.h"
 #include "app_keyscan.h"
+
+#include "app_bt_gatt_handler.h"
+#include "app_bt_utils.h"
+#include "app_bt_advert.h"
+
+
 /*******************************************************************************
  *                              CONSTANTS
  ******************************************************************************/

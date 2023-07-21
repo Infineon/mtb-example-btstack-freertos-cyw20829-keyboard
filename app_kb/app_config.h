@@ -169,7 +169,7 @@
  * Disabled by default , set this to true to enable UART logs
  * MTB debugging wont work when UART logging enabled, since same pins used
  */
-#define ENABLE_LOGGING                              (false)
+#define ENABLE_LOGGING                              (true)
 /*******************************************************************************/
 
 /* [] END OF FILE */

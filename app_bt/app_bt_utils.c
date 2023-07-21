@@ -438,10 +438,9 @@ void app_bt_util_generate_bd_address(uint8_t *device_addr)
     device_addr[2] = (unique_id & 0xff);
 #endif
 
-    printf("BD Address 0x%x%x%x%x%x%x%x%x \r\n",
+    printf("BD Address 0x%x%x%x%x%x%x \r\n",
             device_addr[0], device_addr[1],
             device_addr[2], device_addr[3],
-            device_addr[4], device_addr[5],
-            device_addr[6], device_addr[7]);
+            device_addr[4], device_addr[5]);
 }
 /* [] END OF FILE */
