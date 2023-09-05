@@ -42,6 +42,9 @@ SEARCH_DIR(.)
 GROUP(libgcc.a libc.a libm.a libnosys.a)
 ENTRY(Reset_Handler)
 
+/* Memory reserved for Bootstrap code and data */
+BOOTSTRAP_SIZE = DEFINED(APP_BOOTSTRAP_SIZE) ? APP_BOOTSTRAP_SIZE : 0x00002400 ;
+
 /* The size of the stack section at the end of CM4 SRAM */
 STACK_SIZE = 0x1000;
 
@@ -56,37 +59,34 @@ RAM_END_ADDR_CBUS           = 0x20040000; /* 256K */
 FLASH_END_ADDR_SAHB         = 0x60080000; /* 512K */
 
 BOOTSTRAP_OFFSET_FLASH      = 0x00000050; /* toc2=0x10, l1_desc=0x1C, sign_header=0x20 */
-BOOTSTRAP_OFFSET_RAM        = 0x0003DC00; /* Modify this value to change the size of Bootstrap code + Data */
-APPCODE_OFFSET_FLASH        = 0x00002600;
 
 RAMVECTORS_ALIGNMENT        = 512;
+FLASH_ALIGNMENT_SIZE        = 0x00000200;
 
-/* Memory reserved for Bootstrap code and data */
-BOOTSTRAP_SIZE              = RAM_END_ADDR_SAHB - RAM_START_ADDR_SAHB - BOOTSTRAP_OFFSET_RAM; /* 0x00002000 */
 /* vma for bootstrap code region */
-CODE_VMA                    = RAM_START_ADDR_CBUS + BOOTSTRAP_OFFSET_RAM; /* 0x0401E000 */
+CODE_VMA                    = RAM_START_ADDR_CBUS + (RAM_END_ADDR_SAHB - RAM_START_ADDR_SAHB - BOOTSTRAP_SIZE); /* 0x2003DC00 */
 /* lma for bootstrap code region */
-CODE_LMA                    = FLASH_START_ADDR_SAHB + BOOTSTRAP_OFFSET_FLASH; /* 0x6000004C */
+CODE_LMA                    = FLASH_START_ADDR_SAHB + BOOTSTRAP_OFFSET_FLASH; /* 0x60000050 */
 /* Maximum bootstrap code + data size */
-CODE_BS_SIZE                   = BOOTSTRAP_SIZE; /* 8KB */
+CODE_BS_SIZE                = BOOTSTRAP_SIZE; /* 9KB */
 /* vma for bootstrap data region */
-DATA_BS_VMA                 = RAM_START_ADDR_SAHB + BOOTSTRAP_OFFSET_RAM; /* 0x2001E000 */
+DATA_BS_VMA                 = RAM_END_ADDR_SAHB - BOOTSTRAP_SIZE; /* 0x2003DC00 */
 /* vma for bootstrap and app data region */
 DATA_VMA                    = RAM_START_ADDR_SAHB; /* 0x20000000 */
 /* vma for appCodeRam region */
-DATA_CBUS_VMA               = RAM_START_ADDR_CBUS; /* 0x04000000 */
+DATA_CBUS_VMA               = RAM_START_ADDR_CBUS; /* 0x20000000 */
 /* lma for bootstrap and app data region */
-DATA_LMA                    = CODE_LMA + CODE_BS_SIZE; /* 0x6000204C */
+DATA_LMA                    = CODE_LMA + CODE_BS_SIZE; /* 0x60002450 */
 /* data size */
-DATA_SIZE                   = RAM_END_ADDR_SAHB - DATA_VMA - BOOTSTRAP_SIZE; /* 0x1E000 */
+DATA_SIZE                   = RAM_END_ADDR_SAHB - DATA_VMA - BOOTSTRAP_SIZE; /* 0x3DC00 */
 /* vma for application XIP region */
-XIP_VMA                     = FLASH_START_ADDR_CBUS + APPCODE_OFFSET_FLASH; /* 0x08002200 */
+XIP_VMA                     = FLASH_START_ADDR_CBUS + BOOTSTRAP_SIZE + FLASH_ALIGNMENT_SIZE; /* 0x08002600 */
 /* lma for application XIP region */
-XIP_LMA                     = FLASH_START_ADDR_SAHB + APPCODE_OFFSET_FLASH; /* 0x60002200 */
+XIP_LMA                     = FLASH_START_ADDR_SAHB + BOOTSTRAP_SIZE + FLASH_ALIGNMENT_SIZE; /* 0x60002600 */
 /* size of XIP region */
 XIP_SIZE                    = FLASH_END_ADDR_SAHB - XIP_LMA;
 /* Total size of SRAM */
-RAM_SIZE                    = RAM_END_ADDR_SAHB - RAM_START_ADDR_SAHB; /* 0x00020000 */
+RAM_SIZE                    = RAM_END_ADDR_SAHB - RAM_START_ADDR_SAHB; /* 0x00040000 */
 /* Size of Bootstrap data is kept same as BOOTSTRAP_SIZE */
 DATA_BS_SIZE                = BOOTSTRAP_SIZE;
 
@@ -162,7 +162,7 @@ SECTIONS
      * size of stack_dummy section */
     . = ALIGN(32);
     __StackTop = RAM_START_ADDR_SAHB + STACK_SIZE;
-    __StackLimit = __StackTop - SIZEOF(.stack_dummy);
+    __StackLimit = __StackTop - STACK_SIZE;
     PROVIDE(__stack = __StackTop);
 
     . = ALIGN(RAMVECTORS_ALIGNMENT);
@@ -187,81 +187,16 @@ SECTIONS
         KEEP(*(.cy_ramfunc*))
         . = ALIGN(4);
 
-        KEEP( *(.text.os_in_ram*))
-        KEEP( *(.text.opus_in_ram*))
-        KEEP( *(.text.cy_os_common*))
-        
-        __opus_btstack_start = .;
-        KEEP (*(.text.cy_btstack_common*))
-        __opus_btstack_end = .;
-
-        __opus_btgatt_start = .;
-        KEEP (*(.text.cy_btstack_gatt*))
-        __opus_btgatt_end = .;
-
-        __opus_btport_start = .;
-        KEEP (*(.text.cy_btstack_porting*))
-        __opus_btport_end = .;
-        __opus_btss_start = .;
-        KEEP (*(.text.btss_ipc*))
-        __opus_btss_end = .;
-
         *cy_smif.o(.text*)
         *cy_smif_memslot.o(.text*)
         *cy_smif_sfdp.o(.text*)
-        
-        *app_*.o(.text*)
-        *app_*.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-	
-
-       	*cy_keyscan.o(.text*)
-        *cy_keyscan.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-
-	*cyhal_keyscan.o(.text*)
-        *cyhal_keyscan.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-	
-	*cy_adcmic.o(.text*)
-        *cy_adcmic.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-       
-        *cyhal_system.o(.text*)
-        *cyhal_system.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-        
         *cyhal_syspm.o(.text*)
-        *cyhal_syspm.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
         
-        *cyhal_clock.o(.text*)
-        *cyhal_clock.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-        
-        *cyhal_lptimer.o(.text*)
-        *cyhal_lptimer.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-        
-        *cyabs_rtos_freertos.o(.text*)
-        *cyabs_rtos_freertos.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-
-	*cybt_bt_task.o(.text*)
-        *cybt_bt_task.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-
-        *cybt_platform_freertos.o(.text*)
-        *cybt_platform_freertos.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-            
-        *timers.o(.text*)
-        *timers.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-
-        *queue.o(.text*)
-        *queue.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-        
-        *event_groups.o(.text*)
-        *event_groups.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-        
-        *list.o(.text*)
-        *list.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-        *port.o(.text*)
-        *port.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-        *tasks.o(.text*)
-        *tasks.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-        *portasm.o(.text*)
-        *portasm.o(.rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-
+        KEEP( *(.text.cy_os_common*))
+        KEEP (*(.text.cy_btstack_common*))
+        KEEP (*(.text.cy_btstack_gatt*))
+        KEEP (*(.text.cy_ipc*))
+        KEEP (*(.text.cy_btstack_porting*))
         . = ALIGN(4);
         __app_text_ram_end__ = .;
 
@@ -376,8 +311,8 @@ SECTIONS
         . = ALIGN(4);
 
         /* startup code */
-        *ns_start_cyw20829.o(.text*)
-        *ns_system_cyw20829.o(.text*)
+        *startup_cat1b_cm33.o(.text*)
+        *system_cyw20829.o(.text*)
 
         /* drivers */
         *cy_device.o(.text*)
@@ -389,6 +324,12 @@ SECTIONS
         *ppu_v1.o(.text*)
         *cy_mpc.o(.text*)
         *cy_pd_ppu.o(.text*)
+        *cy_syspm_ppu.o(.text*)
+
+        *memcpy*.o (.text*)        /* add memcpy from the NewLib library here*/
+        *memset*.o (.text*)        /* add memcpy from the NewLib library here*/
+        *memmove*.o (.text*)       /* add memcpy from the NewLib library here*/
+        *s_fabs.o (.text*)
 
         KEEP(*(.cy_l1func*))
 
@@ -417,9 +358,8 @@ SECTIONS
         . = ALIGN(4);
 
         /* startup code */
-        *ns_start_cyw20829.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-        *ns_system_cyw20829.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-
+        *startup_cat1b_cm33.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
+        *system_cyw20829.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
         /* drivers */
         *cy_device.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
         *cy_btss.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
@@ -430,6 +370,7 @@ SECTIONS
         *ppu_v1.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
         *cy_mpc.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
         *cy_pd_ppu.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
+        *cy_syspm_ppu.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
 
         KEEP(*(.cy_l1data*))
 
@@ -444,8 +385,8 @@ SECTIONS
         __bootstrap_bss_start__ = .;
 
         /* startup code */
-        *ns_start_cyw20829.o(.bss* COMMON)
-        *ns_system_cyw20829.o(.bss* COMMON)
+        *startup_cat1b_cm33.o(.bss* COMMON)
+        *system_cyw20829.o(.bss* COMMON)
 
         /* drivers */
         *cy_device.o(.bss* COMMON)
@@ -457,6 +398,7 @@ SECTIONS
         *ppu_v1.o(.bss* COMMON)
         *cy_mpc.o(.bss* COMMON)
         *cy_pd_ppu.o(.bss* COMMON)
+        *cy_syspm_ppu.o(.bss* COMMON)
         KEEP(*(.cy_l1bss*))
 
         . = ALIGN(4);
@@ -475,26 +417,10 @@ SECTIONS
         /* Cortex-M33 flash vector table */
         . = ALIGN(4);
         __text_begin = .;
-        
-        __opus_loop_start = .;
-        KEEP( *(.text.keep_code_together*))
-        *libg_nano.a:lib_a-memcpy-stub.o (.text*)   /* add memcpy from the NewLib library here*/
-        *libg_nano.a:lib_a-memset.o (.text*)   /* add memcpy from the NewLib library here*/
-        *libg_nano.a:lib_a-memmove.o (.text*)   /* add memcpy from the NewLib library here*/
-        *libm.a:lib_a-s_fabs.o (.text*)
-        __opus_loop_end = .;
-        
-        __opus_mdct_start = .;
-        KEEP (*(.text.opus_mdct*))
-        __opus_mdct_end = .;
 
         *(EXCLUDE_FILE(*cy_smif.o
-                        *cyhal_keyscan.o *cy_smif_memslot.o *cy_smif_sfdp.o cy_keyscan.o *app_*.o timers.o list.o tasks.o port.o event_groups.o queue.o cyabs_rtos_freertos.o cybt_bt_task.o *portasm.o *cy_adcmic.o *cyhal_system.o *cyhal_syspm.o *cyhal_clock.o *cyhal_lptimer.o *cybt_platform_freertos.o ) .text*)
+                        *cy_smif_memslot.o *cy_smif_sfdp.o *cyhal_syspm.o) .text*)
 
-        *(EXCLUDE_FILE(*cyhal_keyscan.o *cy_keyscan.o *app_*.o timers.o list.o tasks.o port.o event_groups.o queue.o cyabs_rtos_freertos.o cybt_bt_task.o *portasm.o *cy_adcmic.o *cyhal_system.o *cyhal_syspm.o *cyhal_clock.o *cyhal_lptimer.o *cybt_platform_freertos.o ) .rodata.*)
-        *(EXCLUDE_FILE(*cyhal_keyscan.o *cy_keyscan.o *app_*.o timers.o list.o tasks.o port.o event_groups.o queue.o cyabs_rtos_freertos.o cybt_bt_task.o *portasm.o *cy_adcmic.o *cyhal_system.o *cyhal_syspm.o *cyhal_clock.o *cyhal_lptimer.o *cybt_platform_freertos.o ) .rodata*)
-        *(EXCLUDE_FILE(*cyhal_keyscan.o *cy_keyscan.o *app_*.o timers.o list.o tasks.o port.o event_groups.o queue.o cyabs_rtos_freertos.o cybt_bt_task.o *portasm.o *cy_adcmic.o *cyhal_system.o *cyhal_syspm.o *cyhal_clock.o *cyhal_lptimer.o *cybt_platform_freertos.o ) .constdata*)
-        *(EXCLUDE_FILE(*cyhal_keyscan.o *cy_keyscan.o *app_*.o timers.o list.o tasks.o port.o event_groups.o queue.o cyabs_rtos_freertos.o cybt_bt_task.o *portasm.o *cy_adcmic.o *cyhal_system.o *cyhal_syspm.o *cyhal_clock.o *cyhal_lptimer.o *cybt_platform_freertos.o ) .constdata.*)
         KEEP(*(.init))
         KEEP(*(.fini))
 
@@ -559,7 +485,7 @@ SECTIONS
 }
 
 /* start of bootstrap code sahb address */
-__bootstrap_start_addr__    = RAM_START_ADDR_SAHB + BOOTSTRAP_OFFSET_RAM;
+__bootstrap_start_addr__    = RAM_END_ADDR_SAHB - BOOTSTRAP_SIZE;
 /* bootstrap size */
 __bootstrap_size__          = __bootstrap_size_end__ - __bootstrap_start_addr__;
 

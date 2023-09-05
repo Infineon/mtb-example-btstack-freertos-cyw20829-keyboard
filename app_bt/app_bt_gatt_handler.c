@@ -53,8 +53,8 @@
 #include "app_batmon.h"
 
 #ifdef ENABLE_OTA
-#include "ota_context.h"
-#include "serial_flash.h"
+#include "app_ota_context.h"
+#include "app_serial_flash.h"
 #include "cy_ota_platform.h"
 #include "cy_ota_api.h"
 
@@ -82,7 +82,7 @@ wiced_bt_device_address_t peer_bd_addr = { 0 };
 extern TaskHandle_t ble_task_h;
 extern TimerHandle_t ble_disconnection_timer;
 extern TimerHandle_t conn_param_update_timer;
-
+extern bool ota_started;
 
 
 
@@ -94,8 +94,11 @@ static void app_bt_gatt_free_buffer(uint8_t *p_event_data);
 
 static uint8_t* app_bt_gatt_alloc_buffer(uint16_t len);
 
-static wiced_bt_gatt_status_t app_bt_gatt_req_read_multi_handler(uint16_t conn_id, wiced_bt_gatt_opcode_t opcode,
-                                                  wiced_bt_gatt_read_multiple_req_t *p_read_req, uint16_t len_requested);
+static wiced_bt_gatt_status_t app_bt_gatt_req_read_multi_handler(uint16_t conn_id,
+                                                                 wiced_bt_gatt_opcode_t opcode,
+                                                                 wiced_bt_gatt_read_multiple_req_t *p_read_req,
+                                                                 uint16_t len_requested,
+                                                                 uint16_t *p_error_handle);
 static gatt_db_lookup_table_t *app_bt_gatt_find_by_handle(uint16_t handle);
 
 extern wiced_result_t BTM_SetDataChannelPDULength(wiced_bt_device_address_t bd_addr, uint16_t tx_pdu_length);
@@ -103,9 +106,10 @@ extern wiced_result_t BTM_SetDataChannelPDULength(wiced_bt_device_address_t bd_a
 #ifdef ENABLE_OTA
 static wiced_bt_gatt_status_t app_bt_prepare_write_handler(uint16_t conn_id,
                                                            wiced_bt_gatt_opcode_t opcode,
-                                                           wiced_bt_gatt_write_req_t *p_req);
+                                                           wiced_bt_gatt_write_req_t *p_req,
+                                                           uint16_t *p_error_handle);
 
-static wiced_bt_gatt_status_t app_bt_execute_write_handler(wiced_bt_gatt_event_data_t *p_req);
+static wiced_bt_gatt_status_t app_bt_execute_write_handler(wiced_bt_gatt_event_data_t *p_req, uint16_t *p_error_handle);
 #endif
 
 /*******************************************************************************
@@ -171,6 +175,9 @@ app_bt_gatt_event_handler(wiced_bt_gatt_evt_t event,
     wiced_bt_gatt_status_t gatt_status = WICED_BT_GATT_SUCCESS;
     pfn_free_buffer_t pfn_free;
 
+    wiced_bt_gatt_attribute_request_t *p_attr_req = &p_event_data->attribute_request;
+    uint16_t error_handle = 0;
+
     /*
      * Call the appropriate callback function based on the GATT event type,
      * and pass the relevant event parameters to the callback function
@@ -183,7 +190,16 @@ app_bt_gatt_event_handler(wiced_bt_gatt_evt_t event,
             break;
 
         case GATT_ATTRIBUTE_REQUEST_EVT:
-            gatt_status = app_bt_gatt_attr_request_cb(p_event_data);
+            gatt_status = app_bt_gatt_attr_request_cb(p_event_data, &error_handle);
+
+            if(gatt_status != WICED_BT_GATT_SUCCESS)
+            {
+               wiced_bt_gatt_server_send_error_rsp(p_attr_req->conn_id,
+                                                   p_attr_req->opcode,
+                                                   error_handle,
+                                                   gatt_status);
+            }
+
             break;
 
         case GATT_OPERATION_CPLT_EVT:
@@ -283,6 +299,7 @@ app_bt_gatt_connection_status_change_cb(wiced_bt_gatt_connection_status_t *p_con
 
         /* reset the key count buffer */
         app_reset_key_cnt();
+        Cy_SysPm_SetDeepSleepMode(CY_SYSPM_MODE_DEEPSLEEP);
 
     }
     else
@@ -347,6 +364,7 @@ app_bt_gatt_connection_status_change_cb(wiced_bt_gatt_connection_status_t *p_con
             /* Update the state to IDLE and wait for user events to trigger adv again */
             app_bt_hid_update_device_state(UNPAIRED_IDLE);
         }
+        Cy_SysPm_SetDeepSleepMode(CY_SYSPM_MODE_DEEPSLEEP_RAM);
 
     }
 
@@ -366,7 +384,7 @@ app_bt_gatt_connection_status_change_cb(wiced_bt_gatt_connection_status_t *p_con
  * @return  wiced_bt_gatt_status_t:  BLE GATT status
  */
 wiced_bt_gatt_status_t
-app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data)
+app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data, uint16_t *p_error_handle)
 {
     wiced_bt_gatt_status_t gatt_status = WICED_BT_GATT_SUCCESS;
     wiced_bt_gatt_attribute_request_t *p_attr_req = &p_data->attribute_request;
@@ -379,7 +397,8 @@ app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data)
             gatt_status = app_bt_gatt_read_by_type_handler(p_attr_req->conn_id,
                                                         p_attr_req->opcode,
                         (wiced_bt_gatt_read_by_type_t*)&p_attr_req->data.read_req,
-                                                        p_attr_req->len_requested);
+                                                        p_attr_req->len_requested,
+                                                        p_error_handle);
             break;
 
         case GATT_REQ_READ:
@@ -388,7 +407,8 @@ app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data)
             gatt_status = app_bt_gatt_attr_read_handler(p_attr_req->conn_id,
                                                      p_attr_req->opcode,
                              (wiced_bt_gatt_read_t*)&p_attr_req->data.read_req,
-                                                     p_attr_req->len_requested);
+                                                     p_attr_req->len_requested,
+                                                     p_error_handle);
             break;
 
         case GATT_REQ_READ_MULTI:
@@ -396,13 +416,14 @@ app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data)
             gatt_status = app_bt_gatt_req_read_multi_handler(p_attr_req->conn_id,
                                                              p_attr_req->opcode,
                                                              &p_attr_req->data.read_multiple_req,
-                                                             p_attr_req->len_requested);
+                                                             p_attr_req->len_requested,
+                                                             p_error_handle);
             break;
 
         case GATT_REQ_WRITE:
         case GATT_CMD_WRITE:
         case GATT_CMD_SIGNED_WRITE:
-            gatt_status = app_bt_gatt_attr_write_handler(p_data);
+            gatt_status = app_bt_gatt_attr_write_handler(p_data, p_error_handle);
             if ((p_attr_req->opcode == GATT_REQ_WRITE) && (gatt_status == WICED_BT_GATT_SUCCESS))
             {
                 wiced_bt_gatt_server_send_write_rsp(p_attr_req->conn_id,
@@ -417,13 +438,11 @@ app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data)
                     cy_log_msg(CYLF_MIDDLEWARE, CY_LOG_INFO, "  %s() GATT_REQ_PREPARE_WRITE\n", __func__);
                     gatt_status = app_bt_prepare_write_handler(p_attr_req->conn_id,
                                                           p_attr_req->opcode,
-                                                          &p_attr_req->data.write_req);
+                                                          &p_attr_req->data.write_req,
+                                                          p_error_handle);
                     if((p_attr_req->opcode == GATT_REQ_PREPARE_WRITE) &&  (gatt_status != WICED_BT_GATT_SUCCESS))
                     {
                         cy_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "\n\n== Sending Prepare write error response...\n");
-                        wiced_bt_gatt_server_send_error_rsp(p_attr_req->conn_id,
-                                                            p_attr_req->opcode,
-                                                            p_attr_req->data.write_req.handle, gatt_status);
                     }
 #else
                     gatt_status = WICED_BT_GATT_SUCCESS;
@@ -435,7 +454,7 @@ app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data)
 #ifdef ENABLE_OTA
             printf("GATT_REQ_EXECUTE_WRITE \r\n");
                     cy_log_msg(CYLF_MIDDLEWARE, CY_LOG_INFO, "  %s() GATTS_REQ_TYPE_WRITE_EXEC\n", __func__);
-                    gatt_status = app_bt_execute_write_handler(p_data);
+                    gatt_status = app_bt_execute_write_handler(p_data, p_error_handle);
                     if((p_attr_req->opcode == GATT_REQ_EXECUTE_WRITE) &&  (gatt_status == WICED_BT_GATT_SUCCESS))
                     {
                         cy_log_msg(CYLF_MIDDLEWARE, CY_LOG_DEBUG, "== Sending execute write success response...\n");
@@ -445,9 +464,6 @@ app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data)
                     else
                     {
                         cy_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "== Sending execute write error response...\n");
-                        wiced_bt_gatt_server_send_error_rsp(p_attr_req->conn_id,
-                                                            p_attr_req->opcode,
-                                                            p_attr_req->data.write_req.handle, gatt_status);
                     }
 #else
                      wiced_bt_gatt_server_send_execute_write_rsp(p_attr_req->conn_id, p_attr_req->opcode);
@@ -474,7 +490,7 @@ app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data)
                  (ota_app.reboot_at_end != 0) )
             {
                 cy_rtos_delay_milliseconds(1000);
-                NVIC_SystemReset();
+                Cy_SysPm_TriggerXRes();
             }
             else
             {
@@ -512,17 +528,20 @@ app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data)
  * @return  wiced_bt_gatt_status_t:  BLE GATT status
  */
 wiced_bt_gatt_status_t
-app_bt_gatt_attr_write_handler(wiced_bt_gatt_event_data_t *p_req)
+app_bt_gatt_attr_write_handler(wiced_bt_gatt_event_data_t *p_req, uint16_t *p_error_handle)
 {
 
 #ifdef ENABLE_OTA
-    cy_rslt_t                       result;
+    cy_rslt_t   result;
 #endif
     wiced_bt_gatt_status_t gatt_status = WICED_BT_GATT_SUCCESS;
     wiced_bt_gatt_attribute_request_t *p_attr_req = &p_req->attribute_request;
     wiced_bt_gatt_write_req_t       *p_write_req = &p_req->attribute_request.data.write_req;
     uint8_t index = 0;
     CY_ASSERT(p_req != NULL);
+
+    *p_error_handle = p_write_req->handle;
+
     index = app_bt_gatt_get_index_by_handle(p_write_req->handle);
 #ifdef ENABLE_OTA
 
@@ -542,13 +561,15 @@ app_bt_gatt_attr_write_handler(wiced_bt_gatt_event_data_t *p_req)
                {
                case CY_OTA_UPGRADE_COMMAND_PREPARE_DOWNLOAD:
                    ota_app.connection_type = CY_OTA_CONNECTION_BLE;
+                   ota_started = 1;
+                   xTimerStop(conn_param_update_timer, TIMER_MAX_WAIT);
                    result = init_ota(&ota_app);
                    if (result != CY_RSLT_SUCCESS)
                    {
                        gatt_status= WICED_BT_GATT_ERROR;
                        break;
                    }
-                   printf("cy_ota_ble_download_prepare \r\n");
+                   printf("Preparing to download the image \r\n");
                    result = cy_ota_ble_download_prepare(ota_app.ota_context, ota_app.bt_conn_id, ota_app.bt_config_descriptor);
                    if (result != CY_RSLT_SUCCESS)
                    {
@@ -579,6 +600,7 @@ app_bt_gatt_attr_write_handler(wiced_bt_gatt_event_data_t *p_req)
                    break;
 
                case CY_OTA_UPGRADE_COMMAND_ABORT:
+                   ota_started = 0;
                    result = cy_ota_ble_download_abort(&ota_app.ota_context);
                    gatt_status = WICED_BT_GATT_SUCCESS;
                    break;
@@ -586,7 +608,7 @@ app_bt_gatt_attr_write_handler(wiced_bt_gatt_event_data_t *p_req)
                break;
 
            case HDLC_OTA_FW_UPGRADE_SERVICE_OTA_UPGRADE_DATA_VALUE:
-               printf("OTA_DATA_VALUE \r\n");
+               printf("application downloading... \r\n");
                result = cy_ota_ble_download_write(ota_app.ota_context, p_req);
                if (result != CY_RSLT_SUCCESS)
                {
@@ -647,13 +669,16 @@ wiced_bt_gatt_status_t
 app_bt_gatt_attr_read_handler( uint16_t conn_id,
                             wiced_bt_gatt_opcode_t opcode,
                             wiced_bt_gatt_read_t *p_read_req,
-                            uint16_t len_req)
+                            uint16_t len_req,
+                            uint16_t *p_error_handle)
 {
     wiced_bt_gatt_status_t gatt_status = WICED_BT_GATT_SUCCESS;
     uint16_t valid_end_handle = HDLD_HIDS_KBD_OUT_REPORT_REPORT_REFERENCE;
     uint8_t index = 0;
     uint16_t attr_len_to_copy, to_send;
     uint8_t *from;
+
+    *p_error_handle = p_read_req->handle;
 
     // printf("Reading Handle: 0x%x\r\n", (unsigned int)p_read_req->handle);
     index = app_bt_gatt_get_index_by_handle((p_read_req->handle));
@@ -664,7 +689,6 @@ app_bt_gatt_attr_read_handler( uint16_t conn_id,
 
         if (p_read_req->offset >= app_gatt_db_ext_attr_tbl[index].cur_len)
         {
-            wiced_bt_gatt_server_send_error_rsp(conn_id, opcode, p_read_req->handle, WICED_BT_GATT_INVALID_OFFSET);
             return WICED_BT_GATT_INVALID_OFFSET;
         }
 
@@ -686,10 +710,6 @@ app_bt_gatt_attr_read_handler( uint16_t conn_id,
     else if (valid_end_handle > p_read_req->handle)
     {
         printf("Invalid ATT TBL Index : %d\r\n", index);
-        wiced_bt_gatt_server_send_error_rsp(conn_id,
-                                            opcode,
-                                            p_read_req->handle,
-                                            WICED_BT_GATT_INVALID_HANDLE);
         gatt_status = WICED_BT_GATT_INVALID_HANDLE;
     }
 
@@ -737,10 +757,11 @@ static gatt_db_lookup_table_t* app_bt_gatt_find_by_handle(uint16_t handle)
  *
  */
 wiced_bt_gatt_status_t
-app_bt_gatt_read_by_type_handler(  uint16_t conn_id,
+app_bt_gatt_read_by_type_handler(uint16_t conn_id,
                                 wiced_bt_gatt_opcode_t opcode,
                                 wiced_bt_gatt_read_by_type_t *p_read_data,
-                                uint16_t len_requested )
+                                uint16_t len_requested,
+                                uint16_t *p_error_handle)
 {
     uint16_t    attr_handle = p_read_data->s_handle;
     uint8_t     *p_rsp = app_bt_gatt_alloc_buffer(len_requested);
@@ -753,10 +774,6 @@ app_bt_gatt_read_by_type_handler(  uint16_t conn_id,
     if (p_rsp == NULL)
     {
         printf("len_requested %d \r\n", len_requested);
-        wiced_bt_gatt_server_send_error_rsp(conn_id,
-                                            opcode,
-                                            attr_handle,
-                                            WICED_BT_GATT_INSUF_RESOURCE);
         return WICED_BT_GATT_INSUF_RESOURCE;
     }
 
@@ -767,6 +784,7 @@ app_bt_gatt_read_by_type_handler(  uint16_t conn_id,
         attr_handle = wiced_bt_gatt_find_handle_by_type(attr_handle,
                                                         p_read_data->e_handle,
                                                         &p_read_data->uuid);
+        *p_error_handle = attr_handle;
 
         if (attr_handle == 0)
             break;
@@ -796,10 +814,6 @@ app_bt_gatt_read_by_type_handler(  uint16_t conn_id,
         else
         {
             printf("free buffer resp %x \r\n", p_read_data->s_handle );
-            wiced_bt_gatt_server_send_error_rsp(conn_id,
-                                                opcode,
-                                                p_read_data->s_handle,
-                                                WICED_BT_GATT_ERR_UNLIKELY);
             app_bt_gatt_free_buffer(p_rsp);
             return WICED_BT_GATT_ERR_UNLIKELY;
         }
@@ -810,10 +824,6 @@ app_bt_gatt_read_by_type_handler(  uint16_t conn_id,
     if (used == 0)
     {
         printf("free buffer resp 1 %x \r\n", p_read_data->s_handle );
-        wiced_bt_gatt_server_send_error_rsp(conn_id,
-                                            opcode,
-                                            p_read_data->s_handle,
-                                            WICED_BT_GATT_INVALID_HANDLE);
         app_bt_gatt_free_buffer(p_rsp);
         return WICED_BT_GATT_INVALID_HANDLE;
     }
@@ -845,8 +855,11 @@ app_bt_gatt_read_by_type_handler(  uint16_t conn_id,
  * @return wiced_bt_gatt_status_t: BLE GATT status
  *
  */
-static wiced_bt_gatt_status_t app_bt_gatt_req_read_multi_handler(uint16_t conn_id, wiced_bt_gatt_opcode_t opcode,
-                                                  wiced_bt_gatt_read_multiple_req_t *p_read_req, uint16_t len_requested)
+static wiced_bt_gatt_status_t app_bt_gatt_req_read_multi_handler(uint16_t conn_id,
+                                                                 wiced_bt_gatt_opcode_t opcode,
+                                                                 wiced_bt_gatt_read_multiple_req_t *p_read_req,
+                                                                 uint16_t len_requested,
+                                                                 uint16_t *p_error_handle)
 {
     gatt_db_lookup_table_t *puAttribute;
     uint8_t *p_rsp = app_bt_gatt_alloc_buffer(len_requested);
@@ -856,7 +869,7 @@ static wiced_bt_gatt_status_t app_bt_gatt_req_read_multi_handler(uint16_t conn_i
 
     if (p_rsp == NULL)
     {
-        wiced_bt_gatt_server_send_error_rsp(conn_id, opcode, handle, WICED_BT_GATT_INSUF_RESOURCE);
+        printf("Insufficient resource\r\n");
         return WICED_BT_GATT_INVALID_HANDLE;
     }
 
@@ -864,9 +877,10 @@ static wiced_bt_gatt_status_t app_bt_gatt_req_read_multi_handler(uint16_t conn_i
     for (xx = 0; xx < p_read_req->num_handles; xx++)
     {
         handle = wiced_bt_gatt_get_handle_from_stream(p_read_req->p_handle_stream, xx);
+        *p_error_handle = handle;
+
         if ((puAttribute = app_bt_gatt_find_by_handle(handle)) == NULL)
         {
-            wiced_bt_gatt_server_send_error_rsp(conn_id, opcode, *p_read_req->p_handle_stream, WICED_BT_GATT_ERR_UNLIKELY);
             app_bt_gatt_free_buffer(p_rsp);
             return WICED_BT_GATT_ERR_UNLIKELY;
         }
@@ -887,7 +901,6 @@ static wiced_bt_gatt_status_t app_bt_gatt_req_read_multi_handler(uint16_t conn_i
 
     if (used == 0)
     {
-        wiced_bt_gatt_server_send_error_rsp(conn_id, opcode, *p_read_req->p_handle_stream, WICED_BT_GATT_INVALID_HANDLE);
         return WICED_BT_GATT_INVALID_HANDLE;
     }
 
@@ -895,63 +908,6 @@ static wiced_bt_gatt_status_t app_bt_gatt_req_read_multi_handler(uint16_t conn_i
     wiced_bt_gatt_server_send_read_multiple_rsp(conn_id, opcode, used, p_rsp, (void *)app_bt_gatt_free_buffer);
 
     return WICED_BT_GATT_SUCCESS;
-}
-
-/**
- * Function Name:
- * app_bt_gatt_get_attr_value
- *
- * Function Description:
- * @brief  The function is invoked by app_bt_gatt_attr_read_handler to get a Value from
- *         GATT DB.
- *
- * @param attr_handle_index:  Attribute handle's index in Attribute table.
- * @param p_val:        Pointer to BLE GATT read request value
- * @param len:          Maximum length of GATT read request
- * @param p_len:        Pointer to BLE GATT read request length
- *
- * @return wiced_bt_gatt_status_t  BLE GATT status
- */
-wiced_bt_gatt_status_t
-app_bt_gatt_get_attr_value(uint8_t attr_handle_index,
-                     uint8_t *p_val,
-                     uint16_t len,
-                     uint16_t *p_len)
-{
-
-    wiced_bt_gatt_status_t gatt_status = WICED_BT_GATT_SUCCESS;
-
-    /* Detected a matching handle in the external lookup table */
-    if (len >= app_gatt_db_ext_attr_tbl[attr_handle_index].max_len)
-    {
-        /* Value fits within the supplied buffer; copy over the value */
-        *p_len = app_gatt_db_ext_attr_tbl[attr_handle_index].cur_len;
-        memcpy(p_val, app_gatt_db_ext_attr_tbl[attr_handle_index].p_data,
-               app_gatt_db_ext_attr_tbl[attr_handle_index].cur_len);
-
-        gatt_status = WICED_BT_GATT_SUCCESS;
-    }
-    else if (len >= CY_BT_MAX_ATTR_LEN)
-    {
-        printf("GATT read requested attr len of %d for the handle 0x%x\r\n" ,
-                len, app_gatt_db_ext_attr_tbl[attr_handle_index].handle);
-        /* Value fits within the supplied buffer; copy over the value */
-        *p_len = app_gatt_db_ext_attr_tbl[attr_handle_index].cur_len;
-        memcpy(p_val, app_gatt_db_ext_attr_tbl[attr_handle_index].p_data,
-               app_gatt_db_ext_attr_tbl[attr_handle_index].cur_len);
-
-        gatt_status = WICED_BT_GATT_SUCCESS;
-    }
-    else
-    {
-        printf("GATT read requested more than the max attr len\r\n");
-        *p_len = app_gatt_db_ext_attr_tbl[attr_handle_index].cur_len;
-        memcpy(p_val, app_gatt_db_ext_attr_tbl[attr_handle_index].p_data, len);
-
-        gatt_status = WICED_BT_GATT_SUCCESS;
-    }
-
-    return (gatt_status);
 }
 
 /**
@@ -1080,27 +1036,7 @@ uint8_t app_bt_gatt_get_index_by_handle(uint16_t attr_handle)
 
 /**
  * Function Name:
- * app_bt_gatt_enable_all_cccds
- *
- * Function Description:
- * @brief This function is used to enable all CCCD
- *
- * @param void
- *
- * @return void
- */
-void app_bt_gatt_enable_all_cccds(void)
-{
-    app_bas_battery_level_client_char_config[0] = 0x01;
-    app_hids_kbd_in_report_client_char_config[0] = 0x01;
-    app_hids_cc_in_report_client_char_config[0] = 0x01;
-
-    printf("All Notifications are Enabled\r\n");
-}
-
-/**
- * Function Name:
- * app_bt_gatt_enable_all_cccds
+ * app_bt_gatt_disable_all_cccds
  *
  * Function Description:
  * @brief This function is used to disable all CCCD
@@ -1134,7 +1070,8 @@ void app_bt_gatt_disable_all_cccds(void)
  */
 static wiced_bt_gatt_status_t app_bt_prepare_write_handler(uint16_t conn_id,
                                                            wiced_bt_gatt_opcode_t opcode,
-                                                           wiced_bt_gatt_write_req_t *p_req)
+                                                           wiced_bt_gatt_write_req_t *p_req,
+                                                           uint16_t *p_error_handle)
 {
     if(write_buff.in_use == false)
     {
@@ -1150,6 +1087,8 @@ static wiced_bt_gatt_status_t app_bt_prepare_write_handler(uint16_t conn_id,
     cy_log_msg(CYLF_MIDDLEWARE, CY_LOG_INFO, "     val_len: 0x%x\n", p_req->val_len);
 
     cy_log_msg(CYLF_MIDDLEWARE, CY_LOG_INFO, "val_len = %d \n", p_req->val_len);
+
+    *p_error_handle = p_req->handle;
 
     /** store the data  */
     if(write_buff.written == p_req->offset)
@@ -1197,7 +1136,7 @@ static wiced_bt_gatt_status_t app_bt_prepare_write_handler(uint16_t conn_id,
  * @return wiced_bt_gatt_status_t: GATT result
  *
  */
-static wiced_bt_gatt_status_t app_bt_execute_write_handler(wiced_bt_gatt_event_data_t *p_req)
+static wiced_bt_gatt_status_t app_bt_execute_write_handler(wiced_bt_gatt_event_data_t *p_req, uint16_t *p_error_handle)
 {
     wiced_bt_gatt_write_req_t       *p_write_req;
     wiced_bt_gatt_status_t          status = WICED_BT_GATT_SUCCESS;
@@ -1205,6 +1144,8 @@ static wiced_bt_gatt_status_t app_bt_execute_write_handler(wiced_bt_gatt_event_d
     CY_ASSERT(p_req != NULL);
 
     p_write_req = &p_req->attribute_request.data.write_req;
+
+    *p_error_handle = p_write_req->handle;
 
     CY_ASSERT(p_req != NULL);
 
@@ -1226,7 +1167,7 @@ static wiced_bt_gatt_status_t app_bt_execute_write_handler(wiced_bt_gatt_event_d
     cy_log_msg(CYLF_MIDDLEWARE, CY_LOG_INFO, "     p_val  : %p\n",   p_write_req->p_val);
     cy_log_msg(CYLF_MIDDLEWARE, CY_LOG_INFO, "     val_len: 0x%x\n", p_write_req->val_len);
 
-    status = app_bt_gatt_attr_write_handler(p_req);
+    status = app_bt_gatt_attr_write_handler(p_req,p_error_handle);
     if (status != WICED_BT_GATT_SUCCESS)
     {
         cy_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "app_bt_write_handler() failed....\n");
@@ -1237,6 +1178,5 @@ static wiced_bt_gatt_status_t app_bt_execute_write_handler(wiced_bt_gatt_event_d
     return status;
 }
 #endif
-
 
 /* [] END OF FILE */

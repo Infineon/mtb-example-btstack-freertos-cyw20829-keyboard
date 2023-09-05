@@ -96,34 +96,31 @@ extern wiced_bt_device_address_t peer_bd_addr;
  *                              FUNCTION DECLARATIONS
  ******************************************************************************/
 wiced_bt_gatt_status_t
-app_bt_gatt_attr_write_handler(wiced_bt_gatt_event_data_t *p_req);
+app_bt_gatt_attr_write_handler(wiced_bt_gatt_event_data_t *p_req, uint16_t *p_error_handle);
 
 wiced_bt_gatt_status_t
 app_bt_gatt_attr_read_handler( uint16_t conn_id,
                             wiced_bt_gatt_opcode_t opcode,
                             wiced_bt_gatt_read_t *p_read_req,
-                            uint16_t len_req);
+                            uint16_t len_req,
+                            uint16_t *p_error_handle);
 
 wiced_bt_gatt_status_t
-app_bt_gatt_read_by_type_handler(  uint16_t conn_id,
+app_bt_gatt_read_by_type_handler(uint16_t conn_id,
                                 wiced_bt_gatt_opcode_t opcode,
                                 wiced_bt_gatt_read_by_type_t *p_read_data,
-                                uint16_t len_requested );
+                                uint16_t len_requested,
+                                uint16_t *p_error_handle);
 
 wiced_bt_gatt_status_t
 app_bt_gatt_connection_status_change_cb(wiced_bt_gatt_connection_status_t *p_conn_status);
 
 wiced_bt_gatt_status_t
-app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data);
+app_bt_gatt_attr_request_cb(wiced_bt_gatt_event_data_t *p_data, uint16_t *p_error_handle);
 
 wiced_bt_gatt_status_t
 app_bt_gatt_event_handler(wiced_bt_gatt_evt_t event,
                           wiced_bt_gatt_event_data_t *p_event_data);
-
-wiced_bt_gatt_status_t app_bt_gatt_get_attr_value( uint8_t attr_handle_index,
-                                                uint8_t *p_val,
-                                                uint16_t len,
-                                                uint16_t *p_len);
 
 wiced_bt_gatt_status_t app_bt_gatt_set_attr_value( uint8_t attr_handle_index,
                                                 uint8_t *p_val,
@@ -131,8 +128,6 @@ wiced_bt_gatt_status_t app_bt_gatt_set_attr_value( uint8_t attr_handle_index,
                                                 wiced_bt_gatt_opcode_t opcode);
 
 uint8_t app_bt_gatt_get_index_by_handle(uint16_t attr_handle);
-
-void app_bt_gatt_enable_all_cccds(void);
 
 void app_bt_gatt_disable_all_cccds(void);
 

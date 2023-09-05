@@ -52,12 +52,7 @@
 #include "app_keyscan.h"
 #include "app_handler.h"
 #include "cybsp_smif_init.h"
-
-// This is included to allow the user to control the idle task behavior via the configurator
-// System->Power->RTOS->System Idle Power Mode setting.
-#if defined(COMPONENT_BSP_DESIGN_MODUS) || defined(COMPONENT_CUSTOM_DESIGN_MODUS)
-#include "cycfg.h"
-#endif
+#include "cy_retarget_io.h"
 
 /*******************************************************************************
  *                              Macro Definitions
@@ -67,53 +62,33 @@
 /*******************************************************************************
  *                              Global Variables
  ******************************************************************************/
-#if defined(CY_USING_HAL) && (configUSE_TICKLESS_IDLE != 0)
-static cyhal_lptimer_t *_timer = NULL;
-#endif
 
-static bool deep_sleep = true;
-
-static uint8_t deep_sleep_cnt;
-
-cy_stc_syspm_callback_params_t syspm_cpu_sleep_params;
 cy_stc_syspm_callback_params_t syspm_deep_sleep_params;
-cy_stc_syspm_callback_params_t syspm_hibernate_params;
+cy_stc_syspm_callback_params_t syspm_deep_sleep_ram_params;
+cy_stc_syspm_callback_params_t syspm_deep_sleep_ram_dbg_diable_params;
+extern cy_stc_syspm_warmboot_entrypoint_t syspmBspDeepSleepEntryPoint;
 
-// uint8_t deepsleep_hold;
+extern cyhal_gpio_callback_data_t app_button_isr_data;
 
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-/* WDT object */
-extern cyhal_wdt_t wdt_obj;
-#endif
 /*******************************************************************************
  *                              FUNCTION DEFINITIONS
  ******************************************************************************/
 cy_en_syspm_status_t
-syspm_cpu_sleep_cb(cy_stc_syspm_callback_params_t *callbackParams,
-                              cy_en_syspm_callback_mode_t mode);
-
-cy_en_syspm_status_t
-syspm_ds_cb(cy_stc_syspm_callback_params_t *callbackParams,
+app_syspm_ds_cb(cy_stc_syspm_callback_params_t *callbackParams,
                                  cy_en_syspm_callback_mode_t mode);
 
 cy_en_syspm_status_t
-syspm_hibernate_cb(cy_stc_syspm_callback_params_t *callbackParams,
-                              cy_en_syspm_callback_mode_t mode);
+app_syspm_ds_ram_cb(cy_stc_syspm_callback_params_t *callbackParams,
+                                 cy_en_syspm_callback_mode_t mode);
 
-cy_stc_syspm_callback_t syspm_cpu_sleep_cb_handler =
-{
-    syspm_cpu_sleep_cb,
-    CY_SYSPM_SLEEP,
-    0u,
-    &syspm_cpu_sleep_params,
-    NULL,
-    NULL,
-    255
-};
+
+cy_en_syspm_status_t
+app_syspm_dbg_diable_dsram_cb(cy_stc_syspm_callback_params_t *callbackParams,
+                                    cy_en_syspm_callback_mode_t mode);
 
 cy_stc_syspm_callback_t syspm_deep_sleep_cb_handler =
 {
-    syspm_ds_cb,
+    app_syspm_ds_cb,
     CY_SYSPM_DEEPSLEEP,
     0u,
     &syspm_deep_sleep_params,
@@ -122,38 +97,47 @@ cy_stc_syspm_callback_t syspm_deep_sleep_cb_handler =
     253
 };
 
-cy_stc_syspm_callback_t syspm_hibernate_handler =
+cy_stc_syspm_callback_t syspm_deep_sleep_ram_cb_handler =
 {
-    syspm_hibernate_cb,
-    CY_SYSPM_HIBERNATE,
+    app_syspm_ds_ram_cb,
+    CY_SYSPM_DEEPSLEEP_RAM,
     0u,
-    &syspm_hibernate_params,
+    &syspm_deep_sleep_ram_params,
     NULL,
     NULL,
-    255
+    250
 };
 
+cy_stc_syspm_callback_t syspm_deep_sleep_ram_dbg_diable_cb_handler =
+{
+    app_syspm_dbg_diable_dsram_cb,
+    CY_SYSPM_DEEPSLEEP_RAM,
+    0u,
+    &syspm_deep_sleep_ram_dbg_diable_params,
+    NULL,
+    NULL,
+    0
+};
 /**
- * Function name:
- * syspm_cpu_sleep_cb
+ *  Function name:
+ *  syspm_ds_cb
  *
- * Function Description:
- * @brief Cpu Sleep Callback Function
+ *  Function Description:
+ *  @brief DeepSleep Callback Function
  *
- * @param callbackParams: Pointer to cy_stc_syspm_callback_params_t
- * @param mode: cy_en_syspm_callback_mode_t
+ *  @param callbackParams: Pointer to cy_stc_syspm_callback_params_t
+ *  @param mode: cy_en_syspm_callback_mode_t
  *
- * @return cy_en_syspm_status_t CY_SYSPM_SUCCESS or CY_SYSPM_FAIL
+ *  @return cy_en_syspm_status_t: CY_SYSPM_SUCCESS or CY_SYSPM_FAIL
  */
 CY_SECTION_RAMFUNC_BEGIN
-cy_en_syspm_status_t
-syspm_cpu_sleep_cb( cy_stc_syspm_callback_params_t *callbackParams,
-                cy_en_syspm_callback_mode_t mode)
+cy_en_syspm_status_t app_syspm_ds_cb(cy_stc_syspm_callback_params_t *callbackParams,
+                                 cy_en_syspm_callback_mode_t mode)
 {
     cy_en_syspm_status_t retVal = CY_SYSPM_FAIL;
     CY_UNUSED_PARAMETER(callbackParams);
 
-    switch(mode)
+    switch (mode)
     {
         case CY_SYSPM_CHECK_READY:
         {
@@ -170,27 +154,29 @@ syspm_cpu_sleep_cb( cy_stc_syspm_callback_params_t *callbackParams,
         case CY_SYSPM_BEFORE_TRANSITION:
         /* Performs the actions to be done before entering the low power mode */
         {
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-            /* Stop watchdog timer */
-            cyhal_wdt_kick(&wdt_obj);
-            cyhal_wdt_stop(&wdt_obj);
-#endif
-            //Disable SMIF
-            cybsp_smif_disable();
+            if((key_state_cnt == 0) && (!deepsleep_hold) && (0==app_ghost_detected) && (fn_key_hold == false))
+            {
+                Cy_Keyscan_SetInterruptMask(MXKEYSCAN,  MXKEYSCAN_INTR_KEY_EDGE_DONE);
+                Cy_SysClk_MfoEnable(false);
+            }
+            else
+            {
+                Cy_SysClk_MfoEnable(true);
+            }
+            retVal = CY_SYSPM_SUCCESS;
+        }
+        break;
 
+        case CY_SYSPM_AFTER_DS_WFI_TRANSITION:
+        {
             retVal = CY_SYSPM_SUCCESS;
         }
         break;
 
         case CY_SYSPM_AFTER_TRANSITION:
+        /* Performs the actions to be done after exiting the low power mode */
         {
-            //Enable SMIF
-            cybsp_smif_enable();
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-            /* Start watchdog timer */
-            cyhal_wdt_start(&wdt_obj);
-            cyhal_wdt_kick(&wdt_obj);
-#endif
+            Cy_Keyscan_SetInterruptMask(MXKEYSCAN, MXKEYSCAN_INTR_FIFO_THRESH_DONE);
             retVal = CY_SYSPM_SUCCESS;
         }
         break;
@@ -214,9 +200,11 @@ CY_SECTION_RAMFUNC_END
  *  @param mode: cy_en_syspm_callback_mode_t
  *
  *  @return cy_en_syspm_status_t: CY_SYSPM_SUCCESS or CY_SYSPM_FAIL
+ *
  */
+
 CY_SECTION_RAMFUNC_BEGIN
-cy_en_syspm_status_t syspm_ds_cb(cy_stc_syspm_callback_params_t *callbackParams,
+cy_en_syspm_status_t app_syspm_ds_ram_cb(cy_stc_syspm_callback_params_t *callbackParams,
                                  cy_en_syspm_callback_mode_t mode)
 {
     cy_en_syspm_status_t retVal = CY_SYSPM_FAIL;
@@ -239,11 +227,7 @@ cy_en_syspm_status_t syspm_ds_cb(cy_stc_syspm_callback_params_t *callbackParams,
         case CY_SYSPM_BEFORE_TRANSITION:
         /* Performs the actions to be done before entering the low power mode */
         {
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-            /* Stop watchdog timer */
-            cyhal_wdt_kick(&wdt_obj);
-            cyhal_wdt_stop(&wdt_obj);
-#endif
+
             if((key_state_cnt == 0) && (!deepsleep_hold) && (0==app_ghost_detected) && (fn_key_hold == false))
             {
                 Cy_Keyscan_SetInterruptMask(MXKEYSCAN,  MXKEYSCAN_INTR_KEY_EDGE_DONE);
@@ -266,12 +250,24 @@ cy_en_syspm_status_t syspm_ds_cb(cy_stc_syspm_callback_params_t *callbackParams,
         case CY_SYSPM_AFTER_TRANSITION:
         /* Performs the actions to be done after exiting the low power mode */
         {
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-            /* Start watchdog timer */
-            cyhal_wdt_start(&wdt_obj);
-            cyhal_wdt_kick(&wdt_obj);
-#endif
             Cy_Keyscan_SetInterruptMask(MXKEYSCAN, MXKEYSCAN_INTR_FIFO_THRESH_DONE);
+            cyhal_gpio_free(PAIR_BUTTON);
+
+            cyhal_gpio_init(PAIR_BUTTON,
+                            CYHAL_GPIO_DIR_INPUT,
+                            CYHAL_GPIO_DRIVE_PULLUP,
+                            CYBSP_BTN_OFF);
+
+
+            /* Configure GPIO interrupt on Pair Button */
+            cyhal_gpio_register_callback(PAIR_BUTTON,
+                                         &app_button_isr_data);
+
+            /* Enable GPIO Interrupt on both edge for Pair Button */
+            cyhal_gpio_enable_event(PAIR_BUTTON,
+                                    CYHAL_GPIO_IRQ_BOTH,
+                                    GPIO_INTERRUPT_PRIORITY,
+                                    TRUE);
             retVal = CY_SYSPM_SUCCESS;
         }
         break;
@@ -285,21 +281,21 @@ cy_en_syspm_status_t syspm_ds_cb(cy_stc_syspm_callback_params_t *callbackParams,
 CY_SECTION_RAMFUNC_END
 
 /**
- *  Function name:
- *  syspm_hibernate_cb
+ * Function Name:
+ * app_syspm_ks_ds_cb
  *
- *  Function Description:
- *  @brief Hibernate Callback Function
+ * Function Description:
+ * @brief DeepSleep Callback Function
  *
- *  @param callbackParams: Pointer to cy_stc_syspm_callback_params_t
- *  @param mode: cy_en_syspm_callback_mode_t
+ * @param callbackParams Pointer to cy_stc_syspm_callback_params_t
+ * @param mode cy_en_syspm_callback_mode_t
  *
- *  @return cy_en_syspm_status_t: CY_SYSPM_SUCCESS or CY_SYSPM_FAIL
+ * @return cy_en_syspm_status_t CY_SYSPM_SUCCESS or CY_SYSPM_FAIL
  */
 CY_SECTION_RAMFUNC_BEGIN
 cy_en_syspm_status_t
-syspm_hibernate_cb(cy_stc_syspm_callback_params_t *callbackParams,
-                              cy_en_syspm_callback_mode_t mode)
+app_syspm_dbg_diable_dsram_cb( cy_stc_syspm_callback_params_t *callbackParams,
+                cy_en_syspm_callback_mode_t mode)
 {
     cy_en_syspm_status_t retVal = CY_SYSPM_FAIL;
     CY_UNUSED_PARAMETER(callbackParams);
@@ -321,13 +317,28 @@ syspm_hibernate_cb(cy_stc_syspm_callback_params_t *callbackParams,
         case CY_SYSPM_BEFORE_TRANSITION:
         /* Performs the actions to be done before entering the low power mode */
         {
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-            /* Stop watchdog timer */
-            cyhal_wdt_kick(&wdt_obj);
-            cyhal_wdt_stop(&wdt_obj);
+            Cy_Syslib_SetWarmBootEntryPoint((uint32_t*)&syspmBspDeepSleepEntryPoint, false);
+            retVal = CY_SYSPM_SUCCESS;
+        }
+        break;
+
+        case CY_SYSPM_AFTER_DS_WFI_TRANSITION:
+        {
+
+            retVal = CY_SYSPM_SUCCESS;
+        }
+        break;
+
+        case CY_SYSPM_AFTER_TRANSITION:
+        /* Performs the actions to be done after entering the low power mode */
+        {
+#if ENABLE_LOGGING
+            if(Cy_SysLib_IsDSRAMWarmBootEntry())
+                {
+                   cy_retarget_io_deinit();
+                   cy_retarget_io_init(CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX,115200);
+                }
 #endif
-            // Disable SMIF
-            cybsp_smif_disable();
 
             retVal = CY_SYSPM_SUCCESS;
         }
@@ -340,22 +351,6 @@ syspm_hibernate_cb(cy_stc_syspm_callback_params_t *callbackParams,
     return retVal;
 }
 CY_SECTION_RAMFUNC_END
-
-/**
- * Function Name:
- * create_cpu_sleep_cb
- *
- * Function Description:
- * @brief Creates a syspm Callback for CPU Sleep mode
- *
- * @param  void
- *
- * @return void
- */
-void create_cpu_sleep_cb(void)
-{
-    Cy_SysPm_RegisterCallback(&syspm_cpu_sleep_cb_handler);
-}
 
 /**
  * Function Name:
@@ -372,151 +367,33 @@ void create_deep_sleep_cb(void)
 {
     Cy_SysPm_RegisterCallback(&syspm_deep_sleep_cb_handler);
 }
-
 /**
  * Function Name:
- * create_hibernate_cb
+ * create_deep_sleep_ram_cb
  *
  * Function Description:
- * @brief Creates a syspm Callback for Hibernate mode
+ * @brief Creates a syspm Callback for Deep Sleep ram mode
  *
  * @param  void
  *
  * @return void
  */
-void create_hibernate_cb(void)
+void create_deep_sleep_ram_cb(void)
 {
-    Cy_SysPm_RegisterCallback(&syspm_hibernate_handler);
+    Cy_SysPm_RegisterCallback(&syspm_deep_sleep_ram_cb_handler);
 }
-
 /**
  * Function Name:
- * deep_sleep_enable
+ * create_deep_sleep_ram_dbg_diable_cb
  *
  * Function Description:
- * @brief This function is used to set the MCUSS sleep mode for tickless to either
- *  System DeepSleep or CPU Sleep
+ * @brief Creates a syspm Callback for Deep Sleep ram mode
  *
- * @param en: To enable / disable deepsleep during Active Peripheral operation
+ * @param  void
  *
  * @return void
  */
-void deep_sleep_enable(bool en)
+void create_deep_sleep_ram_dbg_diable_cb(void)
 {
-    if (en)
-    {
-        if (deep_sleep_cnt)
-        {
-            deep_sleep_cnt--;
-        }
-    }
-    else
-    {
-        deep_sleep_cnt++;
-    }
-
-    if (deep_sleep_cnt)
-        deep_sleep = false;
-    else
-        deep_sleep = true;
+    Cy_SysPm_RegisterCallback(&syspm_deep_sleep_ram_dbg_diable_cb_handler);
 }
-
-#if defined(CY_USING_HAL) && (configUSE_TICKLESS_IDLE != 0)
-//--------------------------------------------------------------------------------------------------
-// vApplicationSleep
-//
-/** User defined tickless idle sleep function.
- *
- * Provides a implementation for portSUPPRESS_TICKS_AND_SLEEP macro that allows
- * the device to attempt to deep-sleep for the idle time the kernel expects before
- * the next task is ready. This function disables the system timer and enables low power
- * timer that can operate in deep-sleep mode to wake the device from deep-sleep after
- * expected idle time has elapsed.
- *
- * @param[in] xExpectedIdleTime     Total number of tick periods before
- *                                  a task is due to be moved into the Ready state.
- */
-__attribute__((section(".text.os_in_ram")))
-void vApplicationSleep(TickType_t xExpectedIdleTime)
-{
-
-    uint32_t actual_sleep_ms = 0;
-    static cyhal_lptimer_t timer;
-
-    if (NULL == _timer)
-    {
-        cy_rslt_t result = cyhal_lptimer_init(&timer);
-        if (result == CY_RSLT_SUCCESS)
-        {
-            _timer = &timer;
-        }
-        else
-        {
-            CY_ASSERT(false);
-        }
-    }
-
-    if (NULL != _timer)
-    {
-        /* Disable interrupts so that nothing can change the status of the RTOS while
-         * we try to go to sleep or deep-sleep.
-         */
-        uint32_t status = cyhal_system_critical_section_enter();
-        eSleepModeStatus sleep_status = eTaskConfirmSleepModeStatus();
-
-        if (sleep_status != eAbortSleep)
-        {
-            // By default, the device will deep-sleep in the idle task unless if the device
-            // configurator overrides the behaviour to sleep in the System->Power->RTOS->System
-            // Idle Power Mode setting.
-
-            #if defined (CY_CFG_PWR_SYS_IDLE_MODE)
-            // If the system needs to operate in active mode the tickless mode should not be used in
-            // FreeRTOS
-            CY_ASSERT(CY_CFG_PWR_SYS_IDLE_MODE != CY_CFG_PWR_MODE_ACTIVE);
-            if (deep_sleep)
-            {
-                deep_sleep =
-                    ((CY_CFG_PWR_SYS_IDLE_MODE & CY_CFG_PWR_MODE_DEEPSLEEP) ==
-                     CY_CFG_PWR_MODE_DEEPSLEEP);
-                #endif
-            }
-            uint32_t sleep_ms = pdTICKS_TO_MS(xExpectedIdleTime);
-            cy_rslt_t result;
-            if (deep_sleep)
-            {
-                // Adjust the deep-sleep time by the sleep/wake latency if set.
-#if defined(CY_CFG_PWR_DEEPSLEEP_LATENCY)
-                    if (sleep_ms > CY_CFG_PWR_DEEPSLEEP_LATENCY)
-                    {
-                        sleep_ms -= CY_CFG_PWR_DEEPSLEEP_LATENCY;
-                        result = cyhal_syspm_tickless_deepsleep(_timer, sleep_ms, &actual_sleep_ms);
-                    }
-                    else
-                    {
-                        result = CY_RTOS_TIMEOUT;
-                    }
-#else // defined(CY_CFG_PWR_DEEPSLEEP_LATENCY)
-                result = cyhal_syspm_tickless_deepsleep(_timer, sleep_ms, &actual_sleep_ms);
-#endif // defined(CY_CFG_PWR_DEEPSLEEP_LATENCY)
-            }
-            else
-            {
-                result = cyhal_syspm_tickless_sleep(_timer, sleep_ms, &actual_sleep_ms);
-            }
-
-            if (result == CY_RSLT_SUCCESS)
-            {
-                // If you hit this assert, the latency time (CY_CFG_PWR_DEEPSLEEP_LATENCY) should
-                // be increased. This can be set though the Device Configurator, or by manually
-                // defining the variable.
-                CY_ASSERT(actual_sleep_ms <= pdTICKS_TO_MS(xExpectedIdleTime));
-                vTaskStepTick(pdMS_TO_TICKS(actual_sleep_ms));
-            }
-        }
-
-        cyhal_system_critical_section_exit(status);
-    }
-}
-
-#endif // defined(CY_USING_HAL) && (configUSE_TICKLESS_IDLE != 0)

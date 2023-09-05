@@ -58,35 +58,29 @@
 #include <queue.h>
 #include "timers.h"
 
-
-#include "wiced_memory.h"
-#include "wiced_bt_stack.h"
-
 /* BT header files */
+#include "wiced_bt_stack.h"
 #include "cybt_platform_trace.h"
 #include "cycfg_bt_settings.h"
 #include "cycfg_gap.h"
 #include "app_bt_cfg.h"
+
+/* App header files*/
 #include "app_bt_event_handler.h"
 #include "app_bt_hid.h"
-
 #include "app_handler.h"
 #include "app_batmon.h"
 #include "app_keyscan.h"
-
 #include "cy_retarget_io.h"
 #include "cyhal_wdt.h"
 
-#ifdef ENABLE_OTA
 /* OTA header files */
-#include "serial_flash.h"
+#ifdef ENABLE_OTA
+#include "app_ota_serial_flash.h"
 #include "cy_log.h"
 #include "cy_ota_api.h"
-#include "ota_context.h"
+#include "app_ota_context.h"
 #include "cy_ota_platform.h"
-
-
-extern cy_ota_agent_mem_interface_t storage_interfaces;
 #endif
 
 /*******************************************************************************
@@ -119,50 +113,20 @@ extern cy_ota_agent_mem_interface_t storage_interfaces;
 /*******************************************************************************
  *                           Global Variables
  *******************************************************************************/
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-/* WDT object */
-cyhal_wdt_t wdt_obj;
+
+#ifdef ENABLE_OTA
+extern cy_ota_agent_mem_interface_t storage_interfaces;
 #endif
 
 /*******************************************************************************
  *                           Function Prototypes
  *******************************************************************************/
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-/* Function to initialize Watchdog */
-void app_init_wdt(void);
-#endif
 /* Function to initialize the various tasks for the Bluetooth LE application */
 static void app_tasks_init(void);
 
 /******************************************************************************
  *                          Function Definitions
  ******************************************************************************/
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-/**
- *  Function name:
- *  app_init_wdt
- *
- *  Function Description:
- *  @brief    This function initializes the WDT block
- *
- *  @param    void
- *
- *  @return    void
- */
-void app_init_wdt(void)
-{
-    cy_rslt_t result = CY_RSLT_SUCCESS;
-
-    /* Initialize the WDT */
-    result = cyhal_wdt_init(&wdt_obj, WDT_TIME_OUT_MS);
-
-    /* WDT initialization failed. Stop program execution */
-    if (result != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-    }
-}
-#endif
 /**
  *  Function name:
  *  app_tasks_init
@@ -187,24 +151,6 @@ static void app_tasks_init(void)
         CY_ASSERT(0);
     }
 #endif
-#ifdef ENABLE_OTA
-    cy_log_init(CY_LOG_WARNING, NULL, NULL);
-    cy_ota_set_log_level(CY_LOG_INFO);
-    printf("call ota_mem_init()\n");
-        if (ota_mem_init() != CY_RSLT_SUCCESS)
-        {
-            printf("ERROR returned from ota_mem_init()!!!!!\n");
-        }
-#endif
-        cybt_platform_config_init(&app_bt_platform_cfg_settings);
-#ifdef ENABLE_OTA
-
-        ota_initialize_default_values();
-
-
-        cy_ota_storage_validated(&storage_interfaces);
-#endif
-
     printf("\r\n****** Bluetooth LE HID Keyboard Application******\r\n ");
     printf("\r\nThis application implements HoGP and sends HID reports on Keyboard events over BLE \r\n");
     printf("\r\nDiscover this device with the name:%s\r\n", app_gap_device_name);
@@ -215,14 +161,32 @@ static void app_tasks_init(void)
         printf("ERROR returned from cybsp_smif_init()!!!\r\n");
     }
 
+
+
     /* Initialize kv_store library */
     app_flash_kv_store_init();
+
+#ifdef ENABLE_OTA
+#if (ENABLE_LOGGING == true)
+    cy_log_init(CY_LOG_WARNING, NULL, NULL);
+    cy_ota_set_log_level(CY_LOG_NOTICE);
+#else
+    cy_log_init(CY_LOG_OFF, NULL, NULL);
+#endif
+#endif
+    cybt_platform_config_init(&app_bt_platform_cfg_settings);
+#ifdef ENABLE_OTA
+
+    ota_initialize_default_values();
+    cy_ota_storage_validated(&storage_interfaces);
+#endif
+
 #ifdef ENABLE_OTA
 #ifdef COMPONENT_OTA_BLUETOOTH
     /* Verify that the Non-Secure / Secure build choice matches the Bluetooth? Configurator output */
     if (cy_ota_ble_check_build_vs_configurator() != CY_RSLT_SUCCESS)
     {
-        printf("Failed configurator check\n");
+        printf("Failed configurator check \r \n");
         while(true)
         {
             cy_rtos_delay_milliseconds(1000);
@@ -350,7 +314,9 @@ int main(void)
     /* Initialize the tasks */
     app_tasks_init();
     printf("Application tasks init\r\n");
+#ifdef ENABLE_OTA
     printf("OTA Version %d %d %d \r\n",APP_VERSION_MAJOR,APP_VERSION_MINOR,APP_VERSION_BUILD);
+#endif
 
     /* Start the FreeRTOS scheduler */
     vTaskStartScheduler();

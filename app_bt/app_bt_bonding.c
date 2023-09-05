@@ -87,6 +87,9 @@ extern uint16_t app_bt_conn_id;
  ******************************************************************************/
 
 static uint8_t app_bt_bond_find_cccd_bit(uint16_t attr_handle);
+static cy_rslt_t app_bt_bond_update_new_bd_addr(uint8_t *device_addr);
+static wiced_result_t app_bt_bond_delete_device_info(uint8_t index);
+static wiced_result_t app_bt_bond_add_devices_to_address_resolution_db(void);
 
 /*******************************************************************************
  *                              FUNCTION DEFINITIONS
@@ -345,7 +348,7 @@ cy_rslt_t app_bt_bond_update_local_bd_addr(uint8_t *device_addr)
  *              an error code otherwise.
  *
  */
-cy_rslt_t app_bt_bond_update_new_bd_addr(uint8_t *device_addr)
+static cy_rslt_t app_bt_bond_update_new_bd_addr(uint8_t *device_addr)
 {
     cy_rslt_t rslt = CY_RSLT_SUCCESS;
     wiced_bt_device_address_t local_bda = { 0 };
@@ -390,23 +393,6 @@ cy_rslt_t app_bt_bond_update_index(uint8_t device_no)
     rslt = app_bt_bond_update_data();
 
     return rslt;
-}
-
-/**
- * Function Name:
- * app_bt_bond_get_index
- *
- * Function Description:
- * @brief This function is used to get the current bond index information in the Flash
- *
- * @param   void
- *
- * @return  uint8_t: Current bond index used
- *
- */
-uint8_t app_bt_bond_get_index(void)
-{
-    return bondindex;
 }
 
 /**
@@ -466,7 +452,7 @@ cy_rslt_t app_bt_bond_delete_info(void)
  *                   an error code otherwise.
  *
  */
-wiced_result_t app_bt_bond_delete_device_info(uint8_t index)
+static wiced_result_t app_bt_bond_delete_device_info(uint8_t index)
 {
     wiced_result_t result = WICED_BT_SUCCESS;
 
@@ -487,36 +473,6 @@ wiced_result_t app_bt_bond_delete_device_info(uint8_t index)
     }
 
     return result;
-}
-
-/**
- * Function Name:
- * app_bt_bond_find_device_in_flash
- *
- * Function Description:
- * @brief This function searches provided bd_addr in bonded devices list
- *
- * @param  bd_addr: pointer to the address of the device to be searched
- *
- * @return uint8_t: Index of the device in the bond data stored in the flash if found,
- *            else returns  BOND_MAX to indicate the device was not found.
- *
- */
-uint8_t app_bt_bond_find_device_in_flash(uint8_t *bd_addr)
-{
-    uint8_t index = BOND_MAX; /*Return out of range value if device is not found*/
-    for (uint8_t count = 0; count < bondinfo.slot_data[NUM_BONDED]; count++)
-    {
-        if (0 == memcmp(&(bondinfo.link_keys[count].bd_addr),
-                        bd_addr,
-                        sizeof(wiced_bt_device_address_t)))
-        {
-            printf("Found device in the flash!\r\n");
-            index = count;
-            break; /* Exit the loop since we found what we want */
-        }
-    }
-    return (index);
 }
 
 /**
@@ -559,7 +515,7 @@ wiced_result_t app_bt_bond_check_device_info(uint8_t *bd_addr)
  * @return void
  *
  */
-wiced_result_t app_bt_bond_add_devices_to_address_resolution_db(void)
+static wiced_result_t app_bt_bond_add_devices_to_address_resolution_db(void)
 {
     wiced_result_t result = WICED_BT_SUCCESS;
     /* Copy in the keys and add them to the address resolution database */
@@ -708,30 +664,6 @@ cy_rslt_t app_bt_bond_read_local_identity_keys(void)
 /*******************************************************************************
  *              CCCD Management APIs
  ******************************************************************************/
-/**
- * Function Name:
- * app_bt_bond_update_cccd
- *
- * Function Description:
- * @brief  This function updates the CCCD data in the Flash
- *
- * @param  cccd: cccd value to be updated in flash
- * @param  index: Index of the device in the flash
- *
- * @return cy_rslt_t: CY_RSLT_SUCCESS if the update was successful,
- *              an error code otherwise.
- */
-cy_rslt_t app_bt_bond_update_cccd(uint16_t cccd, uint8_t index)
-{
-        cy_rslt_t rslt = CY_RSLT_TYPE_ERROR;
-        bondinfo.cccd_flags[index]= cccd;
-        printf("Updating CCCD Value to: %d \r\n",cccd);
-        rslt = mtb_kvstore_write(&kvstore_obj,
-                                "bondinfo",
-                                (uint8_t *)&bondinfo,
-                                sizeof(bondinfo));
-        return rslt;
-}
 
 /**
  * Function Name:
@@ -813,78 +745,6 @@ void app_bt_bond_modify_cccd_in_nv_storage(uint16_t attr_handle, uint8_t *p_val)
     {
         printf("KVStor write error\r\n");
     }
-}
-
-/**
- * Function Name:
- * app_bt_bond_restore_cccd_using_link_key
- *
- * Function Description:
- * @brief Function to copy link key and restore CCCD back from the NV Storage
- *
- * @param p_link_key: Link keys of the peer device
- *
- * @return cy_rslt_t: CY_RSLT_SUCCESS if the update was successful,
- *              an error code otherwise.
- */
-cy_rslt_t app_bt_bond_restore_cccd_using_link_key(wiced_bt_device_link_keys_t *p_link_key)
-{
-    cy_rslt_t status = FALSE;
-
-    for (uint8_t count = 0; count < bondinfo.slot_data[NUM_BONDED]; count++)
-    {
-        if( 0 == memcmp(&bondinfo.link_keys[count].bd_addr,
-                        &(p_link_key->bd_addr),
-                        sizeof(wiced_bt_device_address_t) ) )
-        {
-            printf( "Device Matching BD_ADDR is found.\r\n"   \
-                    "Link key request received\r\n");
-            if( NULL == memcpy( p_link_key,
-                                &(bondinfo.link_keys[count]),
-                                sizeof(wiced_bt_device_link_keys_t)))
-            {
-                printf("Link key request memcpy failed\r\n");
-            }
-            else
-            {
-                printf("\nPaired Device Link Key:\r\n");
-                app_bt_util_print_byte_array(&(bondinfo.link_keys[count]),
-                                     sizeof(wiced_bt_device_link_keys_t));
-
-                printf("Found the device. Revoking CCCD status\r\n");
-
-                /* This function restores the bondinfo cccd_flags values to the actual
-                 * GATT DB attribute */
-
-                for (uint8_t i = 0; i < NUM_OF_CCCD; i++)
-                {
-                    if (IS_THIS_BIT_SET(bondinfo.cccd_flags[count], i))
-                    {
-                        printf("Position %d is set\r\n", i);
-                        if( i == 0)
-                        {
-                            app_bas_battery_level_client_char_config[0] = 0x01;
-                        }
-                        else if (i == 1)
-                        {
-                            app_hids_kbd_in_report_client_char_config[0] = 0x01;
-                        }
-                        else
-                        {
-                            app_hids_cc_in_report_client_char_config[0] = 0x01;
-                        }
-                    }
-                }
-
-                printf("cccd_flags value: 0x%x \r\n", bondinfo.cccd_flags[bondindex]);
-                status = TRUE;
-            }
-
-            break;
-        }
-    }
-
-    return status;
 }
 
 /**

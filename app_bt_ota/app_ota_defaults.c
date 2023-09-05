@@ -1,27 +1,28 @@
 /******************************************************************************
-* File Name:   ota_defaults.c
+* File Name:   app_ota_defaults.c
 *
-* Description: OTA example application default settings
+* Description: Definitions and data structures for the OTA example application
 *
 * Related Document: See Readme.md
 *
 *******************************************************************************
-* (c) 2020, Cypress Semiconductor Corporation. All rights reserved.
-*******************************************************************************
-* This software, including source code, documentation and related materials
-* ("Software"), is owned by Cypress Semiconductor Corporation or one of its
-* subsidiaries ("Cypress") and is protected by and subject to worldwide patent
-* protection (United States and foreign), United States copyright laws and
-* international treaty provisions. Therefore, you may use this Software only
-* as provided in the license agreement accompanying the software package from
-* which you obtained this Software ("EULA").
+* Copyright 2022-2023, Cypress Semiconductor Corporation (an Infineon company) or
+* an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
+* This software, including source code, documentation and related
+* materials ("Software") is owned by Cypress Semiconductor Corporation
+* or one of its affiliates ("Cypress") and is protected by and subject to
+* worldwide patent protection (United States and foreign),
+* United States copyright laws and international treaty provisions.
+* Therefore, you may use this Software only as provided in the license
+* agreement accompanying the software package from which you
+* obtained this Software ("EULA").
 * If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
-* non-transferable license to copy, modify, and compile the Software source
-* code solely for use in connection with Cypress's integrated circuit products.
-* Any reproduction, modification, translation, compilation, or representation
-* of this Software except as specified above is prohibited without the express
-* written permission of Cypress.
+* non-transferable license to copy, modify, and compile the Software
+* source code solely for use in connection with Cypress's
+* integrated circuit products.  Any reproduction, modification, translation,
+* compilation, or representation of this Software except as specified
+* above is prohibited without the express written permission of Cypress.
 *
 * Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND,
 * EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED
@@ -32,16 +33,20 @@
 * not authorize its products for use in any products where a malfunction or
 * failure of the Cypress product may reasonably be expected to result in
 * significant property damage, injury or death ("High Risk Product"). By
-* including Cypress's product in a High Risk Product, the manufacturer of such
-* system or application assumes all risk of such use and in doing so agrees to
-* indemnify Cypress against all liability.
+* including Cypress's product in a High Risk Product, the manufacturer
+* of such system or application assumes all risk of such use and in doing
+* so agrees to indemnify Cypress against all liability.
 *******************************************************************************/
 
-#include "ota_context.h"
+/*******************************************************************************
+ *                              INCLUDES
+ ******************************************************************************/
+
+#include "app_ota_context.h"
 #include "GeneratedSource/cycfg_gatt_db.h"
 #include "GeneratedSource/cycfg_bt_settings.h"
 #include "stdio.h"
-#include "serial_flash.h"
+#include "app_ota_serial_flash.h"
 #include "cyabs_rtos.h"
 
 ota_app_context_t ota_app;
@@ -50,9 +55,6 @@ ota_app_context_t ota_app;
 #ifndef  COMPONENT_OTA_BLUETOOTH_SECURE
 /* UUID for non-secure Bluetooth */
 const uint8_t NON_SECURE_UUID_SERVICE_OTA_FW_UPGRADE_SERVICE[] = { 0x1F, 0x38, 0xA1, 0x38, 0xAD, 0x82, 0x35, 0x86, 0xA0, 0x43, 0x13, 0x5C, 0x47, 0x1E, 0x5D, 0xAE };
-#else
-/* UUID for secure Bluetooth*/
-const uint8_t SECURE_UUID_OTA_SEC_FW_UPGRADE_SERVICE[] = { 0xd8, 0x8b, 0x76, 0x46, 0x72, 0x9d, 0xbd, 0xa1, 0x7a, 0x44, 0x25, 0xf4, 0x10, 0x11, 0x26, 0xc7 };
 #endif
 
 /* UUID created by Bluetooth� Configurator, supplied in "GeneratedSource/cycfg_gatt_db.h" */
@@ -95,15 +97,6 @@ cy_rslt_t cy_ota_ble_check_build_vs_configurator( void )
         printf("        (Set 'GATT->Server->OTA FW UPGRADE SERVICE' to 'ae5d1e47-5c13-43a0-8635-82ad38a1381f')\n");
         return CY_RSLT_OTA_ERROR_GENERAL;
     }
-#else
-    if (0 != memcmp(SECURE_UUID_OTA_SEC_FW_UPGRADE_SERVICE, BLE_CONFIG_UUID_SERVICE_OTA_FW_UPGRADE_SERVICE, sizeof(SECURE_UUID_OTA_SEC_FW_UPGRADE_SERVICE)))
-    {
-        cy_log_msg(CYLF_OTA, CY_LOG_ERR, "\n");
-        cy_log_msg(CYLF_OTA, CY_LOG_ERR, "    NON-SECURE <appname>.cybt File does not match SECURE APP build!\n");
-        cy_log_msg(CYLF_OTA, CY_LOG_ERR, "      Change <appname>.cybt File to use SECURE OTA UUID.\n");
-        cy_log_msg(CYLF_OTA, CY_LOG_ERR, "        (Set 'GATT->Server->OTA FW UPGRADE SERVICE' to 'c7261110-f425-447a-a1bd-9d7246768bd8')\n");
-        return CY_RSLT_OTA_ERROR_GENERAL;
-    }
 #endif
 
     return CY_RSLT_SUCCESS;
@@ -116,10 +109,6 @@ cy_rslt_t cy_ota_ble_check_build_vs_configurator( void )
     {
         return CY_RSLT_OTA_ERROR_BADARG;
     }
-
-    memset(&ota_test_network_params, 0, sizeof(ota_test_network_params));
-    memset(&ota_test_agent_params,   0, sizeof(ota_test_agent_params));
-
 
 #ifdef TEST_SWAP_SETUP
     ota_test_agent_params.validate_after_reboot  = 1;        /* Validate after reboot so that we can test revert */

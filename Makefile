@@ -111,8 +111,8 @@ SOURCES=
 INCLUDES=./app_configs
 
 OTA_APP_VERSION_MAJOR=1
-OTA_APP_VERSION_MINOR=1
-OTA_APP_VERSION_BUILD=1
+OTA_APP_VERSION_MINOR=0
+OTA_APP_VERSION_BUILD=0
 
 # Add additional defines to the build process (without a leading -D).
 DEFINES=CY_RETARGET_IO_CONVERT_LF_TO_CRLF CY_RTOS_AWARE STACK_INSIDE_FREE_RTOS
@@ -193,8 +193,8 @@ OTA_LINKER_FILE = ./templates/TARGET_CYW920829-KEYBOARD/COMPONENT_CM33/TOOLCHAIN
 ifneq ($(MAKECMDGOALS),getlibs)
 ifneq ($(MAKECMDGOALS),get_app_info)
 ifneq ($(MAKECMDGOALS),printlibs)
-    include ../mtb_shared/ota-update/release-v3.0.0/makefiles/target_ota.mk
-    include ../mtb_shared/ota-update/release-v3.0.0/makefiles/mcuboot_flashmap.mk
+    include ../mtb_shared/ota-update/release-v*/makefiles/target_ota.mk
+    include ../mtb_shared/ota-update/release-v*/makefiles/mcuboot_flashmap.mk
 endif
 endif
 endif

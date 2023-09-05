@@ -63,7 +63,7 @@ extern uint32_t SystemCoreClock;
 #define configCPU_CLOCK_HZ                      SystemCoreClock
 #define configTICK_RATE_HZ                      ((TickType_t ) 1000)
 #define configMAX_PRIORITIES                    7
-#define configMINIMAL_STACK_SIZE                128
+#define configMINIMAL_STACK_SIZE                256
 #define configMAX_TASK_NAME_LEN                 16
 #define configUSE_16_BIT_TICKS                  0
 #define configIDLE_SHOULD_YIELD                 1
@@ -222,7 +222,8 @@ extern uint32_t SystemCoreClock;
  */
 #if defined(CY_CFG_PWR_SYS_IDLE_MODE) && \
     ((CY_CFG_PWR_SYS_IDLE_MODE == CY_CFG_PWR_MODE_SLEEP) || \
-     (CY_CFG_PWR_SYS_IDLE_MODE == CY_CFG_PWR_MODE_DEEPSLEEP))
+     (CY_CFG_PWR_SYS_IDLE_MODE == CY_CFG_PWR_MODE_DEEPSLEEP) || \
+     (CY_CFG_PWR_SYS_IDLE_MODE == CY_CFG_PWR_MODE_DEEPSLEEP_RAM))
 
 /* Enable low power tickless functionality. The RTOS abstraction library
  * provides the compatible implementation of the vApplicationSleep hook:

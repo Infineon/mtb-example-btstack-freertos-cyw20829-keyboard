@@ -107,14 +107,9 @@ uint8_t app_bt_bond_check_info(void);
 uint8_t app_bt_bond_get_info_count(void);
 cy_rslt_t app_bt_bond_get_new_bd_addr(uint8_t *device_addr);
 cy_rslt_t app_bt_bond_get_local_bd_addr(uint8_t *device_addr);
-cy_rslt_t app_bt_bond_update_new_bd_addr(uint8_t *device_addr);
 cy_rslt_t app_bt_bond_update_local_bd_addr(uint8_t *device_addr);
 cy_rslt_t app_bt_bond_update_index(uint8_t device_no);
-uint8_t app_bt_bond_get_index(void);
 cy_rslt_t app_bt_bond_delete_info(void);
-wiced_result_t app_bt_bond_delete_device_info(uint8_t index);
-uint8_t app_bt_bond_find_device_in_flash(uint8_t *bd_addr);
-wiced_result_t app_bt_bond_add_devices_to_address_resolution_db(void);
 wiced_result_t app_bt_bond_check_device_info(uint8_t *bd_addr);
 
 /* Security Keys Management APIs */
@@ -124,9 +119,7 @@ cy_rslt_t app_bt_bond_save_local_identity_key(wiced_bt_local_identity_keys_t id_
 cy_rslt_t app_bt_bond_read_local_identity_keys(void);
 
 /* CCCD Management APIs */
-cy_rslt_t app_bt_bond_update_cccd(uint16_t cccd, uint8_t index);
 void app_bt_bond_modify_cccd_in_nv_storage(uint16_t attr_handle, uint8_t *p_val);
-cy_rslt_t app_bt_bond_restore_cccd_using_link_key(wiced_bt_device_link_keys_t *p_link_key);
 cy_rslt_t app_bt_bond_restore_cccd(void);
 
 /* Helper APIs */

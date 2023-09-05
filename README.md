@@ -312,6 +312,7 @@ Document title: *CE236637* - *AIROC&trade; CYW20829 HID keyboard reference solut
  1.0.0   | Beta Release of the keyboard application. This version is not for production
  2.0.0   | Added Support for CYW20829B0
  3.0.0   | OTA feature enabled.
+ 3.0.1   | Code optimization for OTA.
 
 <br />
 

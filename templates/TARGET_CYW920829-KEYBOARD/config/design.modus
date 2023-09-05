@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration app="BACKEND" formatVersion="13" lastSavedWith="Configurator Backend" lastSavedWithVersion="3.0.0" toolsPackage="ModusToolbox 3.0.0" xmlns="http://cypress.com/xsd/cydesignfile_v4">
+<Configuration app="BACKEND" formatVersion="13" lastSavedWith="Configurator Backend" lastSavedWithVersion="3.10.0" toolsPackage="ModusToolbox 3.1.0" xmlns="http://cypress.com/xsd/cydesignfile_v4">
     <Devices>
         <Device mpn="CYW20829B0LKML">
             <BlockConfig>
@@ -127,10 +127,34 @@
                 <Block location="ioss[0].port[1].pin[2]">
                     <Alias value="CYBSP_SWDIO"/>
                     <Alias value="CYBSP_DEBUG_UART_RX"/>
+                    <Personality template="pin" version="3.0">
+                        <Param id="DriveModes" value="CY_GPIO_DM_STRONG_IN_OFF"/>
+                        <Param id="initialState" value="1"/>
+                        <Param id="nonSec" value="1"/>
+                        <Param id="vtrip" value="CY_GPIO_VTRIP_CMOS"/>
+                        <Param id="isrTrigger" value="CY_GPIO_INTR_DISABLE"/>
+                        <Param id="slewRate" value="CY_GPIO_SLEW_FAST"/>
+                        <Param id="driveStrength" value="CY_GPIO_DRIVE_1_2"/>
+                        <Param id="sioOutputBuffer" value="true"/>
+                        <Param id="pullUpRes" value="CY_GPIO_PULLUP_RES_DISABLE"/>
+                        <Param id="inFlash" value="true"/>
+                    </Personality>
                 </Block>
                 <Block location="ioss[0].port[1].pin[3]">
                     <Alias value="CYBSP_SWDCK"/>
                     <Alias value="CYBSP_DEBUG_UART_TX"/>
+                    <Personality template="pin" version="3.0">
+                        <Param id="DriveModes" value="CY_GPIO_DM_STRONG_IN_OFF"/>
+                        <Param id="initialState" value="1"/>
+                        <Param id="nonSec" value="1"/>
+                        <Param id="vtrip" value="CY_GPIO_VTRIP_CMOS"/>
+                        <Param id="isrTrigger" value="CY_GPIO_INTR_DISABLE"/>
+                        <Param id="slewRate" value="CY_GPIO_SLEW_FAST"/>
+                        <Param id="driveStrength" value="CY_GPIO_DRIVE_1_2"/>
+                        <Param id="sioOutputBuffer" value="true"/>
+                        <Param id="pullUpRes" value="CY_GPIO_PULLUP_RES_DISABLE"/>
+                        <Param id="inFlash" value="true"/>
+                    </Personality>
                 </Block>
                 <Block location="ioss[0].port[1].pin[4]">
                     <Personality template="pin" version="3.0">
@@ -485,7 +509,7 @@
                         <Param id="isrDataOverflow" value="false"/>
                         <Param id="rxTriggerLevel" value="0"/>
                         <Param id="txTriggerLevel" value="0"/>
-                        <Param id="inFlash" value="true"/>
+                        <Param id="inFlash" value="false"/>
                     </Personality>
                 </Block>
                 <Block location="srss[0].clock[0]">
@@ -579,8 +603,8 @@
                         <Param id="enableLowPowerProfileMode" value="false"/>
                         <Param id="minCurrRegulator" value="CY_SYSPM_LDO_MODE_NORMAL"/>
                         <Param id="backupSrc" value="VDDD"/>
-                        <Param id="idlePwrMode" value="CY_CFG_PWR_MODE_DEEPSLEEP"/>
-                        <Param id="deepsleepLatency" value="0"/>
+                        <Param id="idlePwrMode" value="CY_CFG_PWR_MODE_DEEPSLEEP_RAM"/>
+                        <Param id="deepsleepLatency" value="20"/>
                         <Param id="sdr0BypassModeMacro" value="true"/>
                         <Param id="vddaMv" value="3300"/>
                         <Param id="vdddMv" value="3300"/>
@@ -614,6 +638,14 @@
                 <Net>
                     <Port name="ioss[0].port[1].pin[1].digital_in[0]"/>
                     <Port name="keyscan[0].ks_row[6]"/>
+                </Net>
+                <Net>
+                    <Port name="ioss[0].port[1].pin[2].digital_out[0]"/>
+                    <Port name="keyscan[0].ks_col[17]"/>
+                </Net>
+                <Net>
+                    <Port name="ioss[0].port[1].pin[3].digital_out[0]"/>
+                    <Port name="keyscan[0].ks_col[16]"/>
                 </Net>
                 <Net>
                     <Port name="ioss[0].port[1].pin[4].digital_out[0]"/>

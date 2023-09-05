@@ -52,9 +52,8 @@
 /*******************************************************************************
  *                              FUNCTION DECLARATIONS
  ******************************************************************************/
-void create_cpu_sleep_cb(void);
 void create_deep_sleep_cb(void);
-void create_hibernate_cb(void);
-void deep_sleep_enable(bool en);
+void create_deep_sleep_ram_cb (void);
+void create_deep_sleep_ram_dbg_diable_cb (void);
 
 #endif // __APP_SLEEP_H_

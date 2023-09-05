@@ -66,13 +66,13 @@ RAMVECTORS_ALIGNMENT        = 512;
 FLASH_ALIGNMENT_SIZE        = 0x00000200;
 
 /* vma for bootstrap code region */
-CODE_VMA                    = RAM_START_ADDR_CBUS + (RAM_END_ADDR_SAHB - RAM_START_ADDR_SAHB - BOOTSTRAP_SIZE); /* 0x2001DC00 */
+CODE_VMA                    = RAM_START_ADDR_CBUS + (RAM_END_ADDR_SAHB - RAM_START_ADDR_SAHB - BOOTSTRAP_SIZE); /* 0x2003DC00 */
 /* lma for bootstrap code region */
 CODE_LMA                    = FLASH_START_ADDR_SAHB + BOOTSTRAP_OFFSET_FLASH; /* 0x60000050 */
 /* Maximum bootstrap code + data size */
 CODE_BS_SIZE                = BOOTSTRAP_SIZE; /* 9KB */
 /* vma for bootstrap data region */
-DATA_BS_VMA                 = RAM_END_ADDR_SAHB - BOOTSTRAP_SIZE; /* 0x2001DC00 */
+DATA_BS_VMA                 = RAM_END_ADDR_SAHB - BOOTSTRAP_SIZE; /* 0x2003DC00 */
 /* vma for bootstrap and app data region */
 DATA_VMA                    = RAM_START_ADDR_SAHB; /* 0x20000000 */
 /* vma for appCodeRam region */
@@ -80,7 +80,7 @@ DATA_CBUS_VMA               = RAM_START_ADDR_CBUS; /* 0x20000000 */
 /* lma for bootstrap and app data region */
 DATA_LMA                    = CODE_LMA + CODE_BS_SIZE; /* 0x60002450 */
 /* data size */
-DATA_SIZE                   = RAM_END_ADDR_SAHB - DATA_VMA - BOOTSTRAP_SIZE; /* 0x1DC00 */
+DATA_SIZE                   = RAM_END_ADDR_SAHB - DATA_VMA - BOOTSTRAP_SIZE; /* 0x3DC00 */
 /* vma for application XIP region */
 XIP_VMA                     = FLASH_START_ADDR_CBUS + BOOTSTRAP_SIZE + FLASH_ALIGNMENT_SIZE; /* 0x08002600 */
 /* lma for application XIP region */
@@ -88,7 +88,7 @@ XIP_LMA                     = FLASH_START_ADDR_SAHB + BOOTSTRAP_SIZE + FLASH_ALI
 /* size of XIP region */
 XIP_SIZE                    = FLASH_END_ADDR_SAHB - XIP_LMA;
 /* Total size of SRAM */
-RAM_SIZE                    = RAM_END_ADDR_SAHB - RAM_START_ADDR_SAHB; /* 0x00020000 */
+RAM_SIZE                    = RAM_END_ADDR_SAHB - RAM_START_ADDR_SAHB; /* 0x00040000 */
 /* Size of Bootstrap data is kept same as BOOTSTRAP_SIZE */
 DATA_BS_SIZE                = BOOTSTRAP_SIZE;
 
@@ -164,7 +164,7 @@ SECTIONS
      * size of stack_dummy section */
     . = ALIGN(32);
     __StackTop = RAM_START_ADDR_SAHB + STACK_SIZE;
-    __StackLimit = __StackTop - SIZEOF(.stack_dummy);
+    __StackLimit = __StackTop - STACK_SIZE;
     PROVIDE(__stack = __StackTop);
 
     . = ALIGN(RAMVECTORS_ALIGNMENT);
@@ -316,8 +316,8 @@ SECTIONS
         . = ALIGN(4);
 
         /* startup code */
-        *ns_start_cyw20829.o(.text*)
-        *ns_system_cyw20829.o(.text*)
+        *startup_cat1b_cm33.o(.text*)
+        *system_cyw20829.o(.text*)
 
         /* drivers */
         *cy_device.o(.text*)
@@ -330,10 +330,11 @@ SECTIONS
         *cy_mpc.o(.text*)
         *cy_pd_ppu.o(.text*)
         *cy_syspm_ppu.o(.text*)
-        *libg_nano.a:lib_a-memcpy-stub.o (.text*)   /* add memcpy from the NewLib library here*/
-        *libg_nano.a:lib_a-memset.o (.text*)   /* add memcpy from the NewLib library here*/
-        *libg_nano.a:lib_a-memmove.o (.text*)   /* add memcpy from the NewLib library here*/
-        *libm.a:lib_a-s_fabs.o (.text*)
+
+        *memcpy*.o (.text*)   /* add memcpy from the NewLib library here*/
+        *memset*.o (.text*)        /* add memcpy from the NewLib library here*/
+        *memmove*.o (.text*)       /* add memcpy from the NewLib library here*/
+        *s_fabs.o (.text*)
 
         KEEP(*(.cy_l1func*))
 
@@ -362,8 +363,8 @@ SECTIONS
         . = ALIGN(4);
 
         /* startup code */
-        *ns_start_cyw20829.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
-        *ns_system_cyw20829.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
+        *startup_cat1b_cm33.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
+        *system_cyw20829.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
 
         /* drivers */
         *cy_device.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
@@ -390,8 +391,8 @@ SECTIONS
         __bootstrap_bss_start__ = .;
 
         /* startup code */
-        *ns_start_cyw20829.o(.bss* COMMON)
-        *ns_system_cyw20829.o(.bss* COMMON)
+        *startup_cat1b_cm33.o(.bss* COMMON)
+        *system_cyw20829.o(.bss* COMMON)
 
         /* drivers */
         *cy_device.o(.bss* COMMON)
@@ -423,14 +424,8 @@ SECTIONS
         . = ALIGN(4);
         __text_begin = .;
 
-        *(EXCLUDE_FILE(
-                        /* Add Application files entries here.*/
-
-                        /* Files, OTA library expects to be in RAM */
-                        *cy_smif.o
-                        *cy_smif_memslot.o
-                        *cy_smif_sfdp.o
-                        ) .text*)
+        *(EXCLUDE_FILE(*cy_smif.o
+                        *cy_smif_memslot.o *cy_smif_sfdp.o *cyhal_syspm.o) .text*)
 
         KEEP(*(.init))
         KEEP(*(.fini))

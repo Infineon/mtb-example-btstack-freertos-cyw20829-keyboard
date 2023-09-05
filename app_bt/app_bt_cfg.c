@@ -58,7 +58,8 @@ const cybt_platform_config_t app_bt_platform_cfg_settings =
         .bt_power_pin      = NC,
         #if defined(CY_CFG_PWR_SYS_IDLE_MODE) && \
                    ((CY_CFG_PWR_SYS_IDLE_MODE == CY_CFG_PWR_MODE_SLEEP) || \
-                   (CY_CFG_PWR_SYS_IDLE_MODE == CY_CFG_PWR_MODE_DEEPSLEEP))
+                   (CY_CFG_PWR_SYS_IDLE_MODE == CY_CFG_PWR_MODE_DEEPSLEEP) || \
+                   (CY_CFG_PWR_SYS_IDLE_MODE == CY_CFG_PWR_MODE_DEEPSLEEP_RAM) )
         .sleep_mode = { .sleep_mode_enabled = 1 },
         #else
         .sleep_mode = { .sleep_mode_enabled = 0 },

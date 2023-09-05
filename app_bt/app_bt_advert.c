@@ -373,20 +373,3 @@ void app_bt_adv_bond_index_switch(uint8_t device_channel)
         app_bt_adv_start();
     }
 }
-
-/**
- *  Function name:
- *  app_bt_adv_stop_timer_cb
- *
- *  Function Description:
- *  @brief Timer cb to stop ongoing Bluetooth LE adv.
- *
- *  @param    cb_param: Argument to cb
- *
- *  @return   void
- */
-void app_bt_adv_stop_timer_cb(TimerHandle_t cb_params)
-{
-    /* Stop ongoing adv if any */
-    app_bt_adv_stop();
-}

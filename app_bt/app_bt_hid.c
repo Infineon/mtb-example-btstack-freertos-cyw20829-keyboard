@@ -418,11 +418,7 @@ void app_conn_param_update_timer_cb(TimerHandle_t cb_params)
             SLAVE_LATENCY,
             SUPERVISION_TO);
 
-        if (0 == conn_update_status)
-        {
-            printf("Connection parameter update failed\r\n");
-        }
-        else
+        if (0 != conn_update_status)
         {
             printf("Connection parameter update successful\r\n");
         }

@@ -1,5 +1,5 @@
 /******************************************************************************
-* File Name: serial_flash.h
+* File Name: app_ota_serial_flash.h
 *
 * Description:
 *
@@ -46,18 +46,6 @@
 #include "cy_pdl.h"
 #include "cyhal.h"
 
-/** The function or operation is not supported on the target or the memory */
-#define CY_RSLT_SERIAL_FLASH_ERR_UNSUPPORTED (cy_rslt_t)(CY_RSLT_CREATE(CY_RSLT_TYPE_ERROR, CY_RSLT_MODULE_BOARD_LIB_SERIAL_FLASH, 1))
-/** The Serial Flash not initialized */
-#define CY_RSLT_SERIAL_FLASH_ERR_NOT_INITED (cy_rslt_t)(CY_RSLT_CREATE(CY_RSLT_TYPE_ERROR, CY_RSLT_MODULE_BOARD_LIB_SERIAL_FLASH, 2))
-/** Parameters passed to a function are invalid */
-#define CY_RSLT_SERIAL_FLASH_ERR_BAD_PARAM   (cy_rslt_t)(CY_RSLT_CREATE(CY_RSLT_TYPE_ERROR, CY_RSLT_MODULE_BOARD_LIB_SERIAL_FLASH, 3))
-/** A previously initiated read operation is not yet complete */
-#define CY_RSLT_SERIAL_FLASH_ERR_READ_BUSY   (cy_rslt_t)(CY_RSLT_CREATE(CY_RSLT_TYPE_ERROR, CY_RSLT_MODULE_BOARD_LIB_SERIAL_FLASH, 4))
-/** A DMA error occurred during read transfer */
-#define CY_RSLT_SERIAL_FLASH_ERR_DMA         (cy_rslt_t)(CY_RSLT_CREATE(CY_RSLT_TYPE_ERROR, CY_RSLT_MODULE_BOARD_LIB_SERIAL_FLASH, 5))
-/** Read abort failed. QSPI block is busy. */
-#define CY_RSLT_SERIAL_FLASH_ERR_QSPI_BUSY   (cy_rslt_t)(CY_RSLT_CREATE(CY_RSLT_TYPE_ERROR, CY_RSLT_MODULE_BOARD_LIB_SERIAL_FLASH, 6))
 
 cy_rslt_t ota_mem_init(void);
 cy_rslt_t ota_mem_read(cy_ota_mem_type_t mem_type, uint32_t addr, void *data, size_t len);

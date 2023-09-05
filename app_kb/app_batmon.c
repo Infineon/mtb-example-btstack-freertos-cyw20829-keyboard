@@ -66,9 +66,9 @@
  *                               Global Variables
  *******************************************************************************/
 bool low_battery = false;
-uint16_t batmon_samples[NO_OF_DC_SAMPLES];
+int16_t batmon_samples[NO_OF_DC_SAMPLES];
 uint8_t dc_sample_cnt = 0;
-uint32_t batmon_dc_avg = 0;
+int32_t batmon_dc_avg = 0;
 
 /* Initial State of ADC driver set to INIT */
 volatile adc_driver_state_t adc_drv_state = ADC_INIT;
@@ -104,6 +104,11 @@ static void app_batmon_adc_dc_cap_start(void)
 {
     if (adc_drv_state == ADC_IDLE)
     {
+        /* Initialize the ADCMic for for DC monitoring */
+        if (CY_ADCMIC_SUCCESS != Cy_ADCMic_Init(adcmic_0_HW, &adcmic_0_config, CY_ADCMIC_DC))
+        {
+            CY_ASSERT(0);
+        }
         Cy_ADCMic_SetInterruptMask(adcmic_0_HW, CY_ADCMIC_INTR_DC);
         Cy_ADCMic_ClearInterrupt(adcmic_0_HW, CY_ADCMIC_INTR);
         Cy_ADCMic_Enable(adcmic_0_HW);
@@ -111,7 +116,7 @@ static void app_batmon_adc_dc_cap_start(void)
         adc_drv_state = ADC_DC_MON_ON;
 
         /* Do not allow the device to go to DS */
-        deep_sleep_enable(false);
+        cyhal_syspm_lock_deepsleep();
     }
 
 }
@@ -215,12 +220,6 @@ static void app_batmon_init(void)
     NVIC_ClearPendingIRQ(ADCMIC_IRQ_cfg.intrSrc);
     NVIC_EnableIRQ(ADCMIC_IRQ_cfg.intrSrc);
 
-    /* Initialize the ADCMic for for DC monitoring */
-    if (CY_ADCMIC_SUCCESS != Cy_ADCMic_Init(adcmic_0_HW, &adcmic_0_config, CY_ADCMIC_DC))
-    {
-        CY_ASSERT(0);
-    }
-
     /* Create a Periodic timer for Battery Monitoring */
     batmon_timer = xTimerCreate("Battery Monitoring Timer",
                                   pdMS_TO_TICKS(BATT_LVL_INIT_READ_DELAY_MS),
@@ -282,7 +281,7 @@ static void app_batmon_send_msg_to_hid_msg_q(uint8_t batt_level)
 void app_batmon_task(void *arg)
 {
     uint32_t ulNotifiedValue = 0;
-    uint16_t batt_level_mv = 0;
+    int16_t batt_level_mv = 0;
     uint8_t batt_cap = 0;
     uint8_t batt_cap_prev = 100;
     int i = 0;
@@ -303,7 +302,7 @@ void app_batmon_task(void *arg)
         batmon_dc_avg = batmon_dc_avg / NO_OF_DC_SAMPLES;
 
         /* Get the DC data to MV and convert it to battery capacity */
-        batt_level_mv = Cy_ADCMic_CountsTo_mVolts((uint16_t)batmon_dc_avg, adcmic_0_config.dcConfig->context);
+        batt_level_mv = Cy_ADCMic_CountsTo_mVolts((int16_t)batmon_dc_avg, adcmic_0_config.dcConfig->context);
         if (batt_level_mv >= BATT_LVL_100_MV)
         {
             batt_cap = 100;
@@ -342,7 +341,7 @@ void app_batmon_task(void *arg)
         }
 
         /* Allow the device to go to DS */
-        deep_sleep_enable(true);
+        cyhal_syspm_unlock_deepsleep();
     }
 }
 

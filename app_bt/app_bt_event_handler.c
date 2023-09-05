@@ -58,7 +58,7 @@
 
 #include "cyhal_wdt.h"
 #ifdef ENABLE_OTA
-#include "ota_context.h"
+#include "app_ota_context.h"
 #endif
 /*******************************************************************************
  *                                Macros
@@ -89,12 +89,7 @@ static void app_bt_init(void);
 
 /* This function initializes GATT DB and registers callback for GATT events */
 static void app_bt_gatt_db_init(void);
-
-#if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-/* Function to initialize Watchdog */
-extern void app_init_wdt(void);
-#endif
-
+bool ota_started = 0;
 /*******************************************************************************
  *                          Function Definitions
  ******************************************************************************/
@@ -133,14 +128,10 @@ app_bt_event_management_callback(wiced_bt_management_evt_t event,
         case BTM_ENABLED_EVT:
             /* Perform application-specific initialization */
             app_bt_init();
-            /* Initialize WDT */
-        #if (ENABLE_WDT == true) && (ENABLE_LOGGING == false)
-            app_init_wdt();
-        #endif
             /* Registering callback for system power management */
-            create_cpu_sleep_cb();
             create_deep_sleep_cb();
-            create_hibernate_cb();
+            create_deep_sleep_ram_cb();
+            create_deep_sleep_ram_dbg_diable_cb();
 
             break;
 
@@ -219,7 +210,7 @@ app_bt_event_management_callback(wiced_bt_management_evt_t event,
                 printf("Failed to bond! \r\n");
             }
 
-            /* Print all security keys if needed */
+            /* The security keys can be printed here */
 
             break;
 
@@ -371,7 +362,10 @@ app_bt_event_management_callback(wiced_bt_management_evt_t event,
             {
                 /* Start Connection parameter update timer */
                 conn_param_updated_flag = FALSE;
-                xTimerStart(conn_param_update_timer, TIMER_MAX_WAIT);
+                if(!ota_started)
+                {
+                    xTimerStart(conn_param_update_timer, TIMER_MAX_WAIT);
+                }
             }
 
 

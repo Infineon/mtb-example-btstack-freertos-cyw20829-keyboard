@@ -29,7 +29,7 @@ The MCUBOOT application must built and programmed separately.
    pip install -r requirements.txt
    ```
 ### NOTE
-Check the cysecuretools vesrion it must be version 4.2.0 for the CYW20829
+Check the cysecuretools vesrion it must be version 4.2.0 or above for the CYW20829
 
    Command to check the cysecure tool version
 
@@ -51,11 +51,11 @@ If in case your system has the older version of the cysecure tools please use th
 2. Copy the cyw20829_xip_swap_single.json from the keyboard application in flash_map_json folder and  paste the above json file in the mcuboot/boot/cypress directory.
 3. Use the below command to build the MCUBOOT application.
    ```
-    make clean app APP_NAME=MCUBootApp PLATFORM=CYW20829 USE_CUSTOM_DEBUG_UART=1 USE_EXTERNAL_FLASH=1 USE_XIP=1 FLASH_MAP=./cyw20829_xip_swap_single.json TOOLCHAIN_PATH=c:/Users/$(USERNAME)/ModusToolbox/tools_3.0/gcc
+    make clean app APP_NAME=MCUBootApp PLATFORM=CYW20829 USE_CUSTOM_DEBUG_UART=1 USE_EXTERNAL_FLASH=1 USE_XIP=1 FLASH_MAP=./cyw20829_xip_swap_single.json TOOLCHAIN_PATH=c:/Users/$(USERNAME)/ModusToolbox/tools_3.1/gcc
     ```
 4. Run the below command 
    ```
-   export OPENOCD=C:/Users/$(USERNAME)/ModusToolbox/tools_3.0/openocd
+   export OPENOCD=C:/Users/$(USERNAME)/ModusToolbox/tools_3.1/openocd
    ```
 5. Use the below command to erase the board
    ```
@@ -74,7 +74,7 @@ If in case your system has the older version of the cysecure tools please use th
 3. Click on the terminal in the ModustoolBox IDE
 4. Run the below command 
    ```
-   export OPENOCD=C:/Users/$(USERNAME)/ModusToolbox/tools_3.0/openocd
+   export OPENOCD=C:/Users/$(USERNAME)/ModusToolbox/tools_3.1/openocd
    ```
 5. Command to program the OTA enabled keyboard application
    ```
