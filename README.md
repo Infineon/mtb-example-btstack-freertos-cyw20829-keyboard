@@ -180,6 +180,8 @@ The keyboard will come out of this deepsleep state on any button press events an
 
 6. When the battery capacity reaches 1 percent, the keyboard goes to hibernate mode. To come out of this hibernate state, remove the batteries and insert new batteries to power cycle the keyboard.
 
+**Note**: Power cycle the device after programming in order to enter the DS-RAM power mode.
+
 ### Steps to enable OTA 
 Refer [OTA_README](./app_bt_ota/OTA_README.md)
 
@@ -313,6 +315,7 @@ Document title: *CE236637* - *AIROC&trade; CYW20829 HID keyboard reference solut
  2.0.0   | Added Support for CYW20829B0
  3.0.0   | OTA feature enabled.
  3.0.1   | Code optimization for OTA.
+ 3.1.0   | Bug Fixes.
 
 <br />
 

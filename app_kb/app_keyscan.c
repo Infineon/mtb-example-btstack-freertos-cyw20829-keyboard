@@ -110,7 +110,7 @@ TimerHandle_t ble_disconnection_timer;
 const cy_stc_sysint_t keyscan_irq_cfg =
     {
         /* .intrSrc */ keyscan_interrupt_IRQn,
-        /* .intrPriority */ 3UL};
+        /* .intrPriority */ 7UL};
 
 /* WDT object */
 extern cyhal_wdt_t wdt_obj;
@@ -401,7 +401,7 @@ static app_keyscan_status_t app_keyscan_interrupt_init(void)
  *******************************************************************************/
 static void app_ks_evt_notif_enable(uint32_t key_notify)
 {
-    BaseType_t xHigherPriorityTaskWoken;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
     if (pdTRUE == xTaskNotifyFromISR(
                       keyscan_task_h,             /* Handle of the task being notified */

@@ -101,7 +101,7 @@
 
 /* Task Priorities of  Bluetooth LE HID Keyboard Tasks */
 #define BLE_TASK_PRIORITY                   (3)
-#define KEYSCAN_TASK_PRIORITY               (2)
+#define KEYSCAN_TASK_PRIORITY               (4)
 #define BATMON_TASK_PRIORITY                (1)
 
 /* Sufficient Heap size for Bluetooth activities */
