@@ -316,6 +316,7 @@ Document title: *CE236637* - *AIROC&trade; CYW20829 HID keyboard reference solut
  3.0.0   | OTA feature enabled.
  3.0.1   | Code optimization for OTA.
  3.1.0   | Bug Fixes.
+ 3.2.0   | Update list of supported compilers.
 
 <br />
 

@@ -136,6 +136,9 @@ CY_BUILD_LOCATION:=./build
 ##############################
 # Compiler and Linker Flags
 ##############################
+# Supported Compilers
+CY_TOOLCHAIN_ARM_NOT_SUPPORTED = true
+CY_TOOLCHAIN_IAR_NOT_SUPPORTED = true
 
 # Additional / custom C compiler flags.
 #
