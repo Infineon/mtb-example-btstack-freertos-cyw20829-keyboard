@@ -92,11 +92,17 @@ OTA_ENABLE = 0
 # added to the build
 #
 
-COMPONENTS=FREERTOS WICED_BLE
+COMPONENTS=FREERTOS WICED_BLE BTFW-TX0
 
 # Like COMPONENTS, but disable optional code that was enabled by default.
-DISABLE_COMPONENTS=
+DISABLE_COMPONENTS=BTFW-TX10
 
+APP_VERSION_MAJOR=1
+APP_VERSION_MINOR=2
+APP_VERSION_BUILD=0
+
+CY_TOOLCHAIN_ARM_NOT_SUPPORTED = true
+CY_TOOLCHAIN_IAR_NOT_SUPPORTED = true
 ##############################
 # Defines/ Includes
 ##############################
@@ -110,19 +116,21 @@ SOURCES=
 # directories (without a leading -I).
 INCLUDES=./app_configs
 
-OTA_APP_VERSION_MAJOR=1
-OTA_APP_VERSION_MINOR=0
-OTA_APP_VERSION_BUILD=0
+CY_PYTHON_REQUIREMENT=true
+
+# Python path definition
+ifeq ($(OS),Windows_NT)
+    CY_PYTHON_PATH?=python
+else
+    CY_PYTHON_PATH?=python3
+endif
 
 # Add additional defines to the build process (without a leading -D).
-DEFINES=CY_RETARGET_IO_CONVERT_LF_TO_CRLF CY_RTOS_AWARE STACK_INSIDE_FREE_RTOS CY_CFG_PWR_DEEPSLEEP_RAM_LATENCY=15
-
-DEFINES+= CYBT_PLATFORM_TRACE_ENABLE=0
- DEFINES+=\
-        APP_VERSION_MAJOR=$(OTA_APP_VERSION_MAJOR)\
-        APP_VERSION_MINOR=$(OTA_APP_VERSION_MINOR)\
-        APP_VERSION_BUILD=$(OTA_APP_VERSION_BUILD)
-
+DEFINES=CY_RETARGET_IO_CONVERT_LF_TO_CRLF CY_RTOS_AWARE STACK_INSIDE_FREE_RTOS CY_CFG_PWR_DEEPSLEEP_RAM_LATENCY=15 COMPONENT_OTA_BLUETOOTH
+DEFINES+=\
+        APP_VERSION_MAJOR=$(APP_VERSION_MAJOR)\
+        APP_VERSION_MINOR=$(APP_VERSION_MINOR)\
+        APP_VERSION_BUILD=$(APP_VERSION_BUILD)
 
 ##############################
 # Floating point usage
@@ -181,52 +189,34 @@ PREBUILD=
 
 # Custom post-build commands to run.
 POSTBUILD=
-
 ifeq ($(OTA_ENABLE),1)
 OTA_PLATFORM = CYW20829
 OTA_SUPPORT = 1
-OTA_BT_ONLY = 1
 OTA_BT_SUPPORT = 1
 OTA_BT_SECURE = 0
-FLASH_BASE_ADDRESS = 0x60000000
-CY_IGNORE+= $(SEARCH_mcuboot)
-OTA_FLASH_MAP?=$(RELATIVE_FILE1_FILE2)/../configs/flashmap/cyw20829_xip_swap_single.json
 DEFINES+=ENABLE_OTA_LOGS ENABLE_OTA
+include ./local.mk
+
 OTA_LINKER_FILE = ./templates/TARGET_CYW920829-KEYBOARD/COMPONENT_CM33/TOOLCHAIN_GCC_ARM/cyw20829_ns_flash_cbus_ota_xip.ld
 ifneq ($(MAKECMDGOALS),getlibs)
-ifneq ($(MAKECMDGOALS),get_app_info)
-ifneq ($(MAKECMDGOALS),printlibs)
-    include ../mtb_shared/ota-update/release-v*/makefiles/target_ota.mk
-    include ../mtb_shared/ota-update/release-v*/makefiles/mcuboot_flashmap.mk
-endif
-endif
-endif
-include ./local.mk
-else
-CY_IGNORE+=./app_bt_ota
-CY_IGNORE+=./local.mk
-CY_IGNORE+= $(SEARCH_aws-iot-device-sdk-embedded-C)
-CY_IGNORE+= $(SEARCH_ota-update)
-CY_IGNORE+= $(SEARCH_aws-iot-device-sdk-port)
-CY_IGNORE+= $(SEARCH_connectivity-utilities)
-CY_IGNORE+= $(SEARCH_cy-mbedtls-acceleration)
-CY_IGNORE+= $(SEARCH_http-client)
-CY_IGNORE+= $(SEARCH_lwip-freertos-integration)
-CY_IGNORE+= $(SEARCH_lwip-network-interface-integration)
-CY_IGNORE+= $(SEARCH_lwip)
-CY_IGNORE+= $(SEARCH_mbedtls)
-CY_IGNORE+= $(SEARCH_mqtt)
-CY_IGNORE+= $(SEARCH_secure-sockets)
-CY_IGNORE+= $(SEARCH_whd-bsp-integration)
-CY_IGNORE+= $(SEARCH_wifi-connection-manager)
-CY_IGNORE+= $(SEARCH_wifi-core-freertos-lwip-mbedtls)
-CY_IGNORE+= $(SEARCH_wifi-host-driver)
-CY_IGNORE+= $(SEARCH_wpa3-external-supplicant)
-CY_IGNORE+= $(SEARCH_mcuboot)
-# Path to the linker script to use (if empty, use the default linker script).
-LINKER_SCRIPT=./templates/TARGET_CYW920829-KEYBOARD/COMPONENT_CM33/TOOLCHAIN_GCC_ARM/linker.ld
+	ifneq ($(MAKECMDGOALS),get_app_info)
+		ifneq ($(MAKECMDGOALS),printlibs)
+			LIB_VER_NAME=$(shell cat ./deps/ota-update.mtb | awk -F\# '{print $$2}')
+			include ../mtb_shared/ota-update/$(LIB_VER_NAME)/makefiles/ota_update.mk
+			LIB_VER_NAME=$(shell cat ./deps/ota-bootloader-abstraction.mtb | awk -F\# '{print $$2}')
+			include ../mtb_shared/ota-bootloader-abstraction/$(LIB_VER_NAME)/makefiles/mcuboot/mcuboot_support.mk
+		endif
+	endif
 endif
 
+else
+CY_IGNORE+=./app_bt_ota
+CY_IGNORE+=$(SEARCH_ota-update)
+CY_IGNORE+=$(SEARCH_ota-bootloader-abstraction)
+endif
+
+
+	
 ################################################################################
 # Paths
 ################################################################################

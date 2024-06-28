@@ -85,4 +85,8 @@ wiced_bt_dev_status_t
 app_bt_event_management_callback(wiced_bt_management_evt_t event,
                            wiced_bt_management_evt_data_t *p_event_data);
 
+wiced_bt_gatt_status_t app_bt_ble_send_indication(uint16_t bt_conn_id, uint16_t attr_handle, uint16_t val_len, uint8_t* p_val);
+
+wiced_bt_gatt_status_t app_bt_ble_send_notification(uint16_t bt_conn_id, uint16_t attr_handle, uint16_t val_len, uint8_t* p_val);
+
 #endif // __APP_BT_TASK_H__

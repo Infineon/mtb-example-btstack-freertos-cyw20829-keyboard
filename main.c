@@ -76,11 +76,13 @@
 
 /* OTA header files */
 #ifdef ENABLE_OTA
-#include "app_ota_serial_flash.h"
+//#include "cy_ota_storage_api.h"
 #include "cy_log.h"
 #include "cy_ota_api.h"
 #include "app_ota_context.h"
-#include "cy_ota_platform.h"
+#include "cy_ota_storage_api.h"
+#include "cybsp_bt_config.h"
+#include "cy_ota_api.h"
 #endif
 
 /*******************************************************************************
@@ -115,7 +117,7 @@
  *******************************************************************************/
 
 #ifdef ENABLE_OTA
-extern cy_ota_agent_mem_interface_t storage_interfaces;
+//extern cy_ota_agent_mem_interface_t storage_interfaces;
 #endif
 
 /*******************************************************************************
@@ -167,9 +169,10 @@ static void app_tasks_init(void)
     app_flash_kv_store_init();
 
 #ifdef ENABLE_OTA
+    cy_rslt_t cy_result;
 #if (ENABLE_LOGGING == true)
-    cy_log_init(CY_LOG_WARNING, NULL, NULL);
-    cy_ota_set_log_level(CY_LOG_NOTICE);
+    cy_log_init(CY_LOG_INFO, NULL, NULL);
+    cy_ota_set_log_level(CY_LOG_INFO);
 #else
     cy_log_init(CY_LOG_OFF, NULL, NULL);
 #endif
@@ -178,7 +181,25 @@ static void app_tasks_init(void)
 #ifdef ENABLE_OTA
 
     ota_initialize_default_values();
-    cy_ota_storage_validated(&storage_interfaces);
+    /* We need to init from every ext flash write
+     * See serial_flash.h in app itself.
+     */
+    printf("call cy_ota_storage_init()\n");
+    if (cy_ota_storage_init() != CY_RSLT_SUCCESS)
+    {
+        printf("ERROR returned from cy_ota_storage_init()!!!!!\n");
+    }
+    /* Validate the update so we do not revert on reboot */
+    cy_result =cy_ota_storage_image_validate(0);
+    if (cy_result != CY_RSLT_SUCCESS)
+     {
+         printf("cy_ota_storage_image_validate() Failed\n");
+     }
+     else
+     {
+         printf("cy_ota_storage_image_validate() Successful\n");
+     }
+
 #endif
 
 #ifdef ENABLE_OTA

@@ -17,7 +17,7 @@ The MCUBOOT application must built and programmed separately.
    ```
 3. Change the branch to get the appropriate version:
    ```
-   git checkout v1.8.4-cypress
+   git checkout v1.9.3-cypress
    ```
 4. Pull in sub-modules to build mcuboot:
    ```
@@ -51,11 +51,11 @@ If in case your system has the older version of the cysecure tools please use th
 2. Copy the cyw20829_xip_swap_single.json from the keyboard application in flash_map_json folder and  paste the above json file in the mcuboot/boot/cypress directory.
 3. Use the below command to build the MCUBOOT application.
    ```
-    make clean app APP_NAME=MCUBootApp PLATFORM=CYW20829 USE_CUSTOM_DEBUG_UART=1 USE_EXTERNAL_FLASH=1 USE_XIP=1 FLASH_MAP=./cyw20829_xip_swap_single.json TOOLCHAIN_PATH=c:/Users/$(USERNAME)/ModusToolbox/tools_3.1/gcc
+    make clean app APP_NAME=MCUBootApp PLATFORM=CYW20829 USE_CUSTOM_DEBUG_UART=1 USE_EXTERNAL_FLASH=1 USE_XIP=1 FLASH_MAP=./cyw20829_xip_swap_single.json TOOLCHAIN_PATH=c:/Users/%USERNAME%/ModusToolbox/tools_3.2/gcc
     ```
 4. Run the below command 
    ```
-   export OPENOCD=C:/Users/$(USERNAME)/ModusToolbox/tools_3.1/openocd
+   export OPENOCD=C:/Users/%USERNAME%/ModusToolbox/tools_3.2/openocd
    ```
 5. Use the below command to erase the board
    ```
@@ -74,7 +74,7 @@ If in case your system has the older version of the cysecure tools please use th
 3. Click on the terminal in the ModustoolBox IDE
 4. Run the below command 
    ```
-   export OPENOCD=C:/Users/$(USERNAME)/ModusToolbox/tools_3.1/openocd
+   export OPENOCD=C:/Users/%USERNAME%/ModusToolbox/tools_3.2/openocd
    ```
 5. Command to program the OTA enabled keyboard application
    ```
@@ -94,7 +94,7 @@ The app also supports OTA updates over Bluetooth® LE. A peer app is used to pus
 
 4. Open the terminal and navigate to WsOtaUpgrade.exe. Initiate the update process by issuing the following command:
    ```
-   ./WsOtaUpgrade.exe <App_name>.bin
+   ./WsOtaUpgrade.exe <App_name>signed.bin
    ```
 5. In the dialog box that appears, select your device and click OK (IFX KEYBOARD in this case). In the next window, select Start to begin pushing the OTA update image to the device.
 

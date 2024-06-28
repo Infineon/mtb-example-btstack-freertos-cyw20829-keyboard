@@ -46,8 +46,9 @@
 #include "GeneratedSource/cycfg_gatt_db.h"
 #include "GeneratedSource/cycfg_bt_settings.h"
 #include "stdio.h"
-#include "app_ota_serial_flash.h"
 #include "cyabs_rtos.h"
+//#include "cy_ota_flash.h"
+#include "cy_ota_storage_api.h"
 
 ota_app_context_t ota_app;
 
@@ -60,13 +61,19 @@ const uint8_t NON_SECURE_UUID_SERVICE_OTA_FW_UPGRADE_SERVICE[] = { 0x1F, 0x38, 0
 /* UUID created by Bluetooth� Configurator, supplied in "GeneratedSource/cycfg_gatt_db.h" */
 const uint8_t BLE_CONFIG_UUID_SERVICE_OTA_FW_UPGRADE_SERVICE[] = {__UUID_SERVICE_OTA_FW_UPGRADE_SERVICE };
 
-cy_ota_agent_mem_interface_t storage_interfaces =
+
+
+/* OTA storage interface callbacks */
+cy_ota_storage_interface_t storage_interfaces =
 {
-        .read = ota_mem_read,
-        .write = ota_mem_write,
-        .erase = ota_mem_erase,
-        .get_erase_size = ota_mem_get_erase_size,
-        .get_prog_size = ota_mem_get_prog_size
+           .ota_file_open            = cy_ota_storage_open,
+           .ota_file_read            = cy_ota_storage_read,
+           .ota_file_write           = cy_ota_storage_write,
+           .ota_file_close           = cy_ota_storage_close,
+           .ota_file_verify          = cy_ota_storage_verify,
+           .ota_file_validate        = cy_ota_storage_image_validate,
+           .ota_file_get_app_info    = cy_ota_storage_get_app_info
+
 };
 
 cy_ota_network_params_t     ota_test_network_params = { CY_OTA_CONNECTION_UNKNOWN };
@@ -118,7 +125,10 @@ cy_rslt_t cy_ota_ble_check_build_vs_configurator( void )
                                                                 cy_ota_validated() on reboot */
 #endif
 
-    result = cy_ota_agent_start(&ota_test_network_params, &ota_test_agent_params,&storage_interfaces, &ota_app.ota_context);
+    result = cy_ota_agent_start(&ota_test_network_params,
+                                &ota_test_agent_params,
+                                &storage_interfaces,
+                                &ota_app.ota_context);
     if (result != CY_RSLT_SUCCESS)
     {
         while (true)
