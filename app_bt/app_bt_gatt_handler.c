@@ -356,7 +356,7 @@ app_bt_gatt_connection_status_change_cb(wiced_bt_gatt_connection_status_t *p_con
         }
         else if (app_bt_hid_get_device_state() == PAIRED_ADVERTISING_KNOWN_HOST)
         {
-            app_bt_adv_start_known_host();
+            app_bt_adv_start_known_host_dir_adv();
         }
         else if (0 != app_bt_bond_get_info_count())
         {

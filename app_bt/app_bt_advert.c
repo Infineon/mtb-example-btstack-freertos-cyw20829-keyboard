@@ -56,14 +56,13 @@
  ******************************************************************************/
 #define NON_DISCOVERABLE_MODE_ADV   (BTM_BLE_BREDR_NOT_SUPPORTED)
 #define DISCOVERABLE_MODE_ADV       (BTM_BLE_BREDR_NOT_SUPPORTED|BTM_BLE_LIMITED_DISCOVERABLE_FLAG)
+#define NUM_ADV_ELEM                (CY_BT_ADV_PACKET_DATA_SIZE)
 
 /* Timer handle for stopping advertisement */
 extern TimerHandle_t adv_stop_timer;
 /*******************************************************************************
  *                              FUNCTION DECLARATIONS
  ******************************************************************************/
-/* This function sets the advertisement data */
-static void app_bt_adv_set_data(uint8_t adv_flag);
 
 /*******************************************************************************
  *                              FUNCTION DEFINITIONS
@@ -103,31 +102,6 @@ void app_bt_adv_start(void)
 }
 
 /**
- * Function Name:
- * app_bt_adv_set_data
- *
- * Function Description:
- * @brief   Function used to set LE Advertisement Data
- *
- * @param   void
- *
- * @return  void
- */
-static void app_bt_adv_set_data(uint8_t adv_flag)
-{
-    uint8_t cy_bt_adv_packet_elem_0[1] = { adv_flag };
-
-    /* Set the adv flag */
-    cy_bt_adv_packet_data[0].p_data = (uint8_t*)cy_bt_adv_packet_elem_0;
-
-    /* Set Advertisement data */
-    if (WICED_SUCCESS != wiced_bt_ble_set_raw_advertisement_data(NUM_ADV_ELEM, cy_bt_adv_packet_data))
-    {
-        printf("Setting advertisement data Failed\r\n");
-    }
-}
-
-/**
  *  Function name:
  *  app_bt_adv_state_handler
  *
@@ -156,6 +130,8 @@ void app_bt_adv_state_handler(wiced_bt_ble_advert_mode_t current_adv_mode)
                 else if (app_bt_hid_get_device_state() == UNPAIRED_ADVERTISING)
                 {
                     app_bt_hid_update_device_state(UNPAIRED_IDLE);
+                    //Start swift pairing cool down adv
+                    app_bt_efi_swift_pair_start_adv(DISCOVERABLE_MODE_ADV , true);
                 }
             }
             else
@@ -183,17 +159,22 @@ void app_bt_adv_state_handler(wiced_bt_ble_advert_mode_t current_adv_mode)
 
 }
 
-/**
- *  Function name:
- *  app_bt_adv_start_known_host
- *
- *  Function Description:
- *  @brief This Function starts undirected Bluetooth LE advertisement for reconnection to known host
- *
- *  @param   void
- *
- *  @return  void
- */
+static void app_bt_adv_set_data(uint8_t adv_flag)
+{
+    uint8_t cy_bt_adv_packet_elem_0[1] = { adv_flag };
+    uint8_t cy_bt_adv_packet_elem_10[4] = { 0x06, 0x00, 0x03, 0x00};
+
+    /* Set the adv flag */
+    cy_bt_adv_packet_data[0].p_data = (uint8_t*)cy_bt_adv_packet_elem_0;
+    cy_bt_adv_packet_data[10].p_data = (uint8_t*)cy_bt_adv_packet_elem_10;
+
+    /* Set Advertisement data without EFI payload */
+    if (WICED_SUCCESS != wiced_bt_ble_set_raw_advertisement_data((NUM_ADV_ELEM), cy_bt_adv_packet_data))
+    {
+        printf("Setting advertisement data Failed\r\n");
+    }
+}
+
 void app_bt_adv_start_known_host(void)
 {
     printf("app_bt_start_adv_known_host\r\n");
@@ -215,7 +196,7 @@ void app_bt_adv_start_known_host(void)
     /* Disable pairing mode */
     wiced_bt_set_pairable_mode(FALSE, TRUE);
 
-    /* Update the local address used for connecting to the host */
+    /*local bd update is needed for device switching scenario */
     app_bt_bond_get_local_bd_addr(local_bdaddr);
     wiced_bt_set_local_bdaddr(local_bdaddr, BLE_ADDR_RANDOM);
 
@@ -225,6 +206,57 @@ void app_bt_adv_start_known_host(void)
                                                        NULL))
     {
         printf("Starting undirected Bluetooth LE advertisements Failed\r\n");
+    }
+}
+
+/**
+ *  Function name:
+ *  app_bt_adv_start_known_host_dir_adv
+ *
+ *  Function Description:
+ *  @brief This Function starts directed Bluetooth LE advertisement for reconnection to known host
+ *
+ *  @param   void
+ *
+ *  @return  void
+ */
+void app_bt_adv_start_known_host_dir_adv(void)
+{
+    printf("app_bt_adv_start_known_host_dir_adv\r\n");
+
+    /* Set Advertisement Data */
+    app_bt_adv_set_data(NON_DISCOVERABLE_MODE_ADV);
+
+    /* Start timer to stop undirected adv after required duration */
+    if (pdFAIL == xTimerStart(adv_stop_timer, TIMER_MIN_WAIT))
+    {
+        printf("Failed to start Advertisement stop Timer\r\n");
+    }
+
+    /* Update LED blink period for directed adv indication */
+    app_led_update_blink_period(RECONNECTION_ADV_LED_BLINK_TIME_MS);
+
+    /* Disable pairing mode */
+    wiced_bt_set_pairable_mode(FALSE, TRUE);
+
+    /* Get the link key information */
+    wiced_bt_device_link_keys_t link_keys;
+    app_bt_bond_get_device_link_keys(&link_keys);
+
+    printf("Peer addr type : %d Peer Device BD ADDR: ", link_keys.key_data.ble_addr_type);
+    app_bt_util_print_bd_address(link_keys.bd_addr);
+
+    /*local bd update is needed for device switching scenario */
+    wiced_bt_device_address_t local_bdaddr;
+    app_bt_bond_get_local_bd_addr(local_bdaddr);
+    wiced_bt_set_local_bdaddr(local_bdaddr, BLE_ADDR_RANDOM);
+
+    /* Start Directed LE Advertisements */
+    if (WICED_SUCCESS != wiced_bt_start_advertisements(BTM_BLE_ADVERT_DIRECTED_HIGH,
+                         link_keys.key_data.ble_addr_type,
+                         link_keys.bd_addr))
+    {
+        printf("Starting Directed Bluetooth LE advertisements Failed\r\n");
     }
 }
 
@@ -245,8 +277,6 @@ void app_bt_adv_start_any_host(void)
 
     wiced_bt_device_address_t local_bdaddr;
 
-    /* Set Advertisement Data */
-    app_bt_adv_set_data(DISCOVERABLE_MODE_ADV);
     /* Start timer to stop adv after required duration */
     if (pdFAIL == xTimerStop(adv_stop_timer, TIMER_MIN_WAIT))
     {
@@ -262,13 +292,8 @@ void app_bt_adv_start_any_host(void)
     app_bt_bond_get_new_bd_addr(local_bdaddr);
     wiced_bt_set_local_bdaddr(local_bdaddr, BLE_ADDR_RANDOM);
 
-    /* Start Undirected LE Advertisements */
-    if (WICED_SUCCESS != wiced_bt_start_advertisements(BTM_BLE_ADVERT_UNDIRECTED_HIGH,
-                                                       BLE_ADDR_PUBLIC,
-                                                       NULL))
-    {
-        printf("Starting undirected Bluetooth LE advertisements Failed\r\n");
-    }
+    /* Set Advertisement Data and Start Undirected LE Advertisements*/
+    app_bt_efi_swift_pair_start_adv(DISCOVERABLE_MODE_ADV , false);
 }
 
 /**

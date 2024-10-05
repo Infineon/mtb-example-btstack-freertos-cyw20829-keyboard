@@ -1,7 +1,7 @@
 /*******************************************************************************
- * File Name: app_bt_advert.h
+ * File Name: app_bt_efi_swift_pair.c
  *
- * Description: This File provides the interfaces necessary for Bluetooth LE
+ * Description: This File provides the implementations necessary for Bluetooth
  * Advertisements.
  *
  * Related Document: See README.md
@@ -39,48 +39,80 @@
  * so agrees to indemnify Cypress against all liability.
  *******************************************************************************/
 
-#ifndef __APP_BT_ADVERT_H__
-#define __APP_BT_ADVERT_H__
 /*******************************************************************************
  *                              INCLUDES
  ******************************************************************************/
-#include <stdio.h>
-#include <stdint.h>
 
-#include "cycfg_gap.h"
-#include "app_bt_efi_swift_pair.h"
-#include "FreeRTOS.h"
-#include "timers.h"
+#include "app_bt_advert.h"
+#include "app_bt_gatt_handler.h"
+#include "app_bt_hid.h"
+
+#include "app_handler.h"
+
+ /*******************************************************************************
+  *                      MACROS / VARIABLE DEFINITIONS
+  ******************************************************************************/
+  /* Number of advertisement frames */
+#define NUM_ADV_ELEM            (CY_BT_ADV_PACKET_DATA_SIZE)
 
 /*******************************************************************************
  *                              FUNCTION DECLARATIONS
  ******************************************************************************/
-/* This function initializes advertisement data and pairable mode */
-void app_bt_adv_start(void);
-
-/* This function handles the application state based on the advertisement state change */
-void app_bt_adv_state_handler(wiced_bt_ble_advert_mode_t current_adv_mode);
-
-/* This Function starts undirected Bluetooth LE advertisement for reconnection to known host */
-void app_bt_adv_start_known_host(void);
-
-/* This Function starts directed Bluetooth LE advertisement for reconnection to known host */
-void app_bt_adv_start_known_host_dir_adv(void);
-
-/* This Function starts undirected Bluetooth LE advertisement for pairing to new host */
-void app_bt_adv_start_any_host(void);
-
-/* This Function stops ongoing Bluetooth LE advertisement */
-void app_bt_adv_stop(void);
-
-/* This Function is used to switch device to pairing mode */
-void app_bt_adv_pairing_mode_switch(void);
-
-/* This Function is used to switch the current bond index */
-void app_bt_adv_bond_index_switch(uint8_t device_channel);
-
-/* This Function stops ongoing Bluetooth LE advertisement */
-void app_bt_adv_stop(void);
 
 
-#endif // __APP_BT_ADVERT_H__
+ /*******************************************************************************
+  *                              FUNCTION DEFINITIONS
+  ******************************************************************************/
+
+  /**
+   * Function Name:
+   * app_bt_efi_swift_pair_set_adv_data
+   *
+   * Function Description:
+   * @brief   Function used to set LE Advertisement Data for swift pairing 
+   *
+   * @param   adv_flag : Adv mode flag
+   *          is_cool_down_adv : True is case of cool down phase , False otherwise
+   *
+   * @return  void
+   */
+static void app_bt_efi_swift_pair_set_adv_data(uint8_t adv_flag , bool is_cool_down_adv)
+{
+    uint8_t cy_bt_adv_packet_elem_0[1] = { adv_flag };
+
+    /* Set the adv flag */
+    cy_bt_adv_packet_data[0].p_data = (uint8_t*)cy_bt_adv_packet_elem_0;
+
+    /* Set Advertisement data */
+    if (WICED_SUCCESS != wiced_bt_ble_set_raw_advertisement_data((is_cool_down_adv ? (NUM_ADV_ELEM - 1) : (NUM_ADV_ELEM)), cy_bt_adv_packet_data))
+    {
+        printf("Setting advertisement data Failed\r\n");
+    }
+}
+
+/**
+ * Function name:
+ * app_bt_efi_swift_pair_start_adv
+ *
+ * Function Description:
+ * @brief    Function used to start connectable advertisements for swift pairing once
+ * BTM_ENABLED_EVT event occurs in Bluetooth management callback
+ *
+ * @param    adv_flag : Adv mode flag
+ *           is_cool_down_adv : True is case of cool down phase , False otherwise
+ *
+ * @return   void
+ */
+void app_bt_efi_swift_pair_start_adv(uint8_t adv_flag ,bool is_cool_down_adv)
+{
+    /* Set Advertisement Data */
+    app_bt_efi_swift_pair_set_adv_data(adv_flag, is_cool_down_adv );
+
+    /* Start Undirected LE Advertisements */
+    if (WICED_SUCCESS != wiced_bt_start_advertisements((is_cool_down_adv ? (BTM_BLE_ADVERT_UNDIRECTED_LOW) : (BTM_BLE_ADVERT_UNDIRECTED_HIGH)),
+                                                       BLE_ADDR_PUBLIC,
+                                                       NULL))
+    {
+        printf("Starting undirected Bluetooth LE advertisements Failed\r\n");
+    }
+}

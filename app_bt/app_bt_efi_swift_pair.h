@@ -1,7 +1,7 @@
 /*******************************************************************************
- * File Name: app_bt_advert.h
+ * File Name: app_bt_efi_swift_pair.h
  *
- * Description: This File provides the interfaces necessary for Bluetooth LE
+ * Description: This File provides the interfaces necessary for Bluetooth
  * Advertisements.
  *
  * Related Document: See README.md
@@ -39,48 +39,13 @@
  * so agrees to indemnify Cypress against all liability.
  *******************************************************************************/
 
-#ifndef __APP_BT_ADVERT_H__
-#define __APP_BT_ADVERT_H__
 /*******************************************************************************
  *                              INCLUDES
  ******************************************************************************/
-#include <stdio.h>
-#include <stdint.h>
-
-#include "cycfg_gap.h"
-#include "app_bt_efi_swift_pair.h"
-#include "FreeRTOS.h"
-#include "timers.h"
-
+#include <stdbool.h>
 /*******************************************************************************
  *                              FUNCTION DECLARATIONS
  ******************************************************************************/
-/* This function initializes advertisement data and pairable mode */
-void app_bt_adv_start(void);
 
-/* This function handles the application state based on the advertisement state change */
-void app_bt_adv_state_handler(wiced_bt_ble_advert_mode_t current_adv_mode);
-
-/* This Function starts undirected Bluetooth LE advertisement for reconnection to known host */
-void app_bt_adv_start_known_host(void);
-
-/* This Function starts directed Bluetooth LE advertisement for reconnection to known host */
-void app_bt_adv_start_known_host_dir_adv(void);
-
-/* This Function starts undirected Bluetooth LE advertisement for pairing to new host */
-void app_bt_adv_start_any_host(void);
-
-/* This Function stops ongoing Bluetooth LE advertisement */
-void app_bt_adv_stop(void);
-
-/* This Function is used to switch device to pairing mode */
-void app_bt_adv_pairing_mode_switch(void);
-
-/* This Function is used to switch the current bond index */
-void app_bt_adv_bond_index_switch(uint8_t device_channel);
-
-/* This Function stops ongoing Bluetooth LE advertisement */
-void app_bt_adv_stop(void);
-
-
-#endif // __APP_BT_ADVERT_H__
+/* This function sets Advertisement Data and Start Undirected LE Advertisements*/
+void app_bt_efi_swift_pair_start_adv(uint8_t adv_flag ,bool is_cool_down_adv);

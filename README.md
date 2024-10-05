@@ -169,7 +169,7 @@ You can debug the example to step through the code. In the IDE, use the **\<Appl
 
 1. Use MTB or via command line to build and program your application.
 
-2. The HID keyboard starts advertising as "IFX BLE Keyboard" at high duty for 60 seconds followed by low duty for 30 seconds, and then the advertisements are turned OFF.
+2. The HID keyboard starts advertising as "IFX BLE Keyboard" at high duty followed by low duty, and then the advertisements are turned OFF (ref swift pairing section for more details on advertisements).
 
 3. When the advertisements are OFF, press connect button or any key on the keyboard to start advertisements and get them discovered by peer devices.
 
@@ -210,9 +210,27 @@ Refer [OTA_README](./app_bt_ota/OTA_README.md)
 You can now use the keyboard to press keys and use all the functionalities.
 The keyboard can be used in three OS modes- Android, Windows, and iOS.
 
+### Swift pairing Enabled
+
+[Microsoft Swift pair](https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/bluetooth-swift-pair)
+
+1. Please make sure the laptop is Windows 10, version 1803 or above , Switch on the bluetooth.
+
+2. Go to Settings –> Bluetooth –> devices –> device settings –> “Show notifications to connect using Swift Pair” should be ON.
+
+3. When the keyboard application is advertising, Windows will show a notification(Pop-up window) to the user
+   Please ref to the GIF in the above link demonstrating the pop-up.
+
+4. This sample app does high duty advertisement for 60 seconds, then switchs to low duty cycle for 60 seconds and then switches to
+   cool down phase for 60 sec where the adv doesn't have the swift pair PDU so in this phase no pop-up will be seen.
+
+5. Selecting "Connect" from the pop-up notification starts pairing the peripheral.
+
+6. Once the pairing and connection is complete, notification pops-up saying the Key board is setup, then Key board can be used.
+
 ### Testing on Android
 
-1.  Use the slider switch at the bottom side to power ON the keyboard.
+1. Use the slider switch at the bottom side to power ON the keyboard.
 
 2. To pair the keyboard with a new host device, disconnect the keyboard from the current host device if connected to any. Then press and hold the connect button next to the slider switch for 3 seconds to start the undirected Bluetooth&reg; LE advertisement.
 
@@ -280,6 +298,15 @@ To switch to a different host device, press the Fn key + Numeric key 1/2/3.
 
    Fn Key + E -> Windows
 
+#### Note:
+Some special function keys may not be supported by some of the device vendors. So, users can modify as per the device support.
+
+## Steps to enable the BTSPY on the CYW20829-KEYBOARD
+1. Add airoc-hci-transport from library manager before enabling spy traces, check airoc-hci-transport [README.md](https://github.com/Infineon/airoc-hci-transport/blob/master/README.md) for more details. If airoc-hci-transport library is included in the application, it is recommended to initialize it (Call cybt_debug_uart_init()). If airoc-hci-transport library is present in the application, but you want to use retarget-io library to get application traces in Teraterm/putty, you need to set the ENABLE_AIROC_HCI_TRANSPORT_PRINTF MACRO value to 0 in the application. Otherwise printf messages of the application will not be visible.
+
+      #define ENABLE_AIROC_HCI_TRANSPORT_PRINTF 1
+
+2. The UART peripheral needs to be deinitialize  and reinitialize since we are using the DS-RAM idle power mode, Follow the instruction at section 3.3.2 in the following document [AN238282](https://www.infineon.com/dgdl/Infineon-AN238282_-_AIROC_CYW20829_MCU_low-power_modes_and_power_reduction_techniques-ApplicationNotes-v02_00-EN.pdf?fileId=8ac78c8c8d2fe47b018e36a5d3077271).
 
 ## Resources and settings
 
@@ -318,7 +345,8 @@ Document title: *CE236637* - *AIROC&trade; CYW20829 HID keyboard reference solut
  3.1.0   | Bug Fixes.
  3.2.0   | Update list of supported compilers.
  4.0.0   | BSP,OTA Middlewareand BTStack-integration major update for BT Firmware as a separate asset
-
+ 4.1.0   | EFI, Swift Pairing
+ 
 <br />
 
 ---------------------------------------------------------
