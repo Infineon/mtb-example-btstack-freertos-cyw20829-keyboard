@@ -7,7 +7,7 @@
  * Related Document: See README.md
  *
  *******************************************************************************
- * Copyright 2022-2024, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2022-2025, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -130,8 +130,14 @@ void app_bt_adv_state_handler(wiced_bt_ble_advert_mode_t current_adv_mode)
                 else if (app_bt_hid_get_device_state() == UNPAIRED_ADVERTISING)
                 {
                     app_bt_hid_update_device_state(UNPAIRED_IDLE);
+
                     //Start swift pairing cool down adv
-                    app_bt_efi_swift_pair_start_adv(DISCOVERABLE_MODE_ADV , true);
+                    app_bt_adv_stop();
+                    if (CY_RSLT_SUCCESS != app_bt_bond_check_info())
+                    {
+                        printf("Start swift pairing cool down adv \n ");
+                        app_bt_efi_swift_pair_start_adv(DISCOVERABLE_MODE_ADV, true);
+                    }
                 }
             }
             else
@@ -309,7 +315,7 @@ void app_bt_adv_start_any_host(void)
  */
 void app_bt_adv_stop(void)
 {
-    printf("app_bt_stop_adv\r\n");
+    printf("app_bt_adv_stop\r\n");
 
     if (WICED_SUCCESS != wiced_bt_start_advertisements(BTM_BLE_ADVERT_OFF,
                                                        BLE_ADDR_PUBLIC,

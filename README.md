@@ -346,6 +346,7 @@ Document title: *CE236637* - *AIROC&trade; CYW20829 HID keyboard reference solut
  3.2.0   | Update list of supported compilers.
  4.0.0   | BSP,OTA Middlewareand BTStack-integration major update for BT Firmware as a separate asset
  4.1.0   | EFI, Swift Pairing
+ 4.2.0   | Stop adv if no connection is established post cooldown phase
  
 <br />
 

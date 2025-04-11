@@ -236,7 +236,7 @@
                                         <Field>
                                             <FieldProperties>
                                                 <Property id="Name" value="Product ID"/>
-                                                <Property id="Value" value="0x0001"/>
+                                                <Property id="Value" value="0x0101"/>
                                                 <Property id="Format" value="f_uint16"/>
                                             </FieldProperties>
                                         </Field>
@@ -1266,8 +1266,8 @@
                     <Property id="HostLowAdvIntervalMax" value="300"/>
                     <Property id="HostLowAdvTimeoutEnabled" value="true"/>
                     <Property id="HostLowAdvTimeout" value="60"/>
-                    <Property id="HostHighDirAdvIntervalMin" value="250"/>
-                    <Property id="HostHighDirAdvIntervalMax" value="500"/>
+                    <Property id="HostHighDirAdvIntervalMin" value="30"/>
+                    <Property id="HostHighDirAdvIntervalMax" value="30"/>
                     <Property id="HostLowDirAdvIntervalMin" value="30"/>
                     <Property id="HostLowDirAdvIntervalMax" value="30"/>
                     <Property id="HostLowDirAdvTimeoutEnabled" value="true"/>
@@ -1284,10 +1284,6 @@
                 <AdvertisementPacket>
                     <Property id="AdFlags" value="true"/>
                     <Property id="DiscoveryMode" value="Limited"/>
-                    <Property id="AdLocalName" value="true"/>
-                    <Property id="LocalNameType" value="Shortened"/>
-                    <Property id="LocalNameLength" value="3"/>
-                    <Property id="AdTxPowerLevel" value="true"/>
                     <Property id="AdServiceUuid" value="true"/>
                     <Property id="ServiceUuid" value="{126da98f-f73e-4c59-a99d-b8c3441c5b28}"/>
                     <Property id="AdAppearance" value="true"/>
@@ -1296,6 +1292,8 @@
                     <Property id="CustomDataValue" value="0x06, 0x00, 0x03, 0x00, 0x80, 0x4B,0x65, 0x79,0x62, 0x72"/>
                 </AdvertisementPacket>
                 <ScanResponsePacket>
+                    <Property id="AdLocalName" value="true"/>
+                    <Property id="LocalNameType" value="Complete"/>
                     <Property id="AdTxPowerLevel" value="true"/>
                 </ScanResponsePacket>
             </PeripheralConfiguration>
